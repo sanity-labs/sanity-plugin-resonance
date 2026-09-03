@@ -20,6 +20,7 @@ import {
   type LastTestRecord,
   lastTestStorageKey,
   readLastTest,
+  storageHost,
   writeLastTest,
 } from '../audience-tests/last-test-storage'
 import {useAudienceTest} from '../audience-tests/use-audience-test'
@@ -28,7 +29,7 @@ import {
   MAX_CONTENT_BYTES,
   type ResonanceDocumentContext,
   type ResonanceDocumentVariant,
-  type ResonancePluginOptions,
+  type ResolvedPluginOptions,
 } from '../options'
 import type {ResolvedDocumentConfig} from '../resolve-documents'
 import type {ResonanceApiError, ResonanceFetch} from '../transport/resonance-fetch'
@@ -39,12 +40,11 @@ import {RunCard} from './RunCard'
 import {useStudioContext} from './studio-context'
 
 export interface RunViewProps {
-  options: ResonancePluginOptions
+  options: ResolvedPluginOptions
   config: ResolvedDocumentConfig
   documentType: string
   fetch: ResonanceFetch
   accountUid: string
-  accountLabel?: string
   publishedDocumentId: string
 }
 
@@ -62,7 +62,6 @@ export function RunView({
   documentType,
   fetch,
   accountUid,
-  accountLabel,
   publishedDocumentId,
 }: RunViewProps) {
   const {displayed, editState} = useDocumentPane()
@@ -70,10 +69,11 @@ export function RunView({
   const {projectId, dataset} = useStudioContext()
   const {state, run, load} = useAudienceTest({fetch, accountUid, documentKey: publishedDocumentId})
 
-  const storageKey = lastTestStorageKey({projectId, dataset, publishedDocumentId})
+  const host = useMemo(() => storageHost(options.apiUrl), [options.apiUrl])
+  const storageKey = lastTestStorageKey({host, projectId, dataset, publishedDocumentId})
   const [record, setRecord] = useState<LastTestRecord | null>(() => readLastTest(storageKey))
 
-  const compareKey = compareStorageKey({projectId, dataset, publishedDocumentId})
+  const compareKey = compareStorageKey({host, projectId, dataset, publishedDocumentId})
   const [compareEnabled, setCompareEnabled] = useState(() => readCompareEnabled(compareKey))
   const handleCompareChange = useCallback(
     (enabled: boolean) => {
@@ -83,7 +83,7 @@ export function RunView({
     [compareKey],
   )
 
-  const audiencesKey = audiencesStorageKey({projectId, documentType})
+  const audiencesKey = audiencesStorageKey({host, projectId, documentType})
   const [selectedAudiences, setSelectedAudiences] = useState<string[] | null>(() =>
     readSelectedAudiences(audiencesKey),
   )
@@ -224,13 +224,7 @@ export function RunView({
 
   if (state.status === 'error' && isNoPersonasError(state.error)) {
     return (
-      <AccessState
-        accountLabel={accountLabel}
-        accountUid={accountUid}
-        onRetry={handleRun}
-        options={options}
-        state={{status: 'no-personas'}}
-      />
+      <AccessState apiUrl={options.apiUrl} onRetry={handleRun} state={{status: 'no-personas'}} />
     )
   }
 

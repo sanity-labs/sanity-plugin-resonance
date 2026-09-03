@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
 
-import type {ResonancePluginOptions} from '../options'
+import type {ResolvedPluginOptions} from '../options'
 import {createResonanceFetch, type ResonanceApiError, type ResonanceFetch} from './resonance-fetch'
 import {useOrganizationId} from './use-organization-id'
 import {useResonanceAccount} from './use-resonance-account'
@@ -41,7 +41,7 @@ export interface UseAccessResult {
  * editor is granted the configured account. The transport reads the token and organization id
  * through refs so the same instance stays valid across re-renders and picks up a refreshed token.
  */
-export function useAccess(options: ResonancePluginOptions): UseAccessResult {
+export function useAccess(options: ResolvedPluginOptions): UseAccessResult {
   const [retryKey, setRetryKey] = useState(0)
   const retry = useCallback(() => setRetryKey((key) => key + 1), [])
 

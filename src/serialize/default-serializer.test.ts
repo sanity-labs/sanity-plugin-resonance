@@ -181,7 +181,7 @@ describe('serializeWithSchema', () => {
           {_type: 'figure', _key: 'f', asset: {_ref: 'image-def'}, caption: 'Captioned'},
           {_type: 'callToAction', _key: 'cta', text: 'Try it', href: 'https://x.test'},
           {_type: 'embed', _key: 'e', url: 'https://x.test/v'},
-          {_type: 'table', _key: 't', rows: 'malformed'},
+          {_type: 'table', _key: 't', rows: {bad: true}},
           block('After.'),
         ],
       },
@@ -200,6 +200,107 @@ describe('serializeWithSchema', () => {
       ].join('\n\n'),
     )
     expect(result?.content).not.toMatch(/image-abc|_ref|\{/)
+  })
+
+  it('reads the words out of nested custom blocks and skips links, ids and presentation', () => {
+    const type = schema([portableText('body')])
+    const result = serializeWithSchema(
+      {
+        body: [
+          {
+            _type: 'callout',
+            _key: 'c',
+            title: 'Heads up',
+            tone: 'caution',
+            body: [block('Releases are in beta.')],
+            link: {href: 'https://x.test/docs', title: 'Docs'},
+          },
+          {
+            _type: 'cardCollection',
+            _key: 'cc',
+            cards: [
+              {_key: 'a', title: 'First card', description: 'Does one thing', href: '/a'},
+              {_key: 'b', title: 'Second card', icon: 'star', slug: 'second-card'},
+            ],
+          },
+          {_type: 'mermaidDiagram', _key: 'm', alt: 'Flow of data', diagram: 'graph TD; A-->B'},
+          {_type: 'youtube', _key: 'y', url: 'https://youtu.be/abc', id: 'zXvt0YW6J4LcT6zfPQq9k'},
+        ],
+      },
+      type,
+    )
+    expect(result?.content).toBe(
+      [
+        '[callout: Heads up — Releases are in beta.]',
+        '[cardCollection: First card — Does one thing — Second card]',
+        '[mermaidDiagram: Flow of data — graph TD; A-->B]',
+        '[youtube]',
+      ].join('\n\n'),
+    )
+    expect(result?.content).not.toMatch(/https?:|\/a\b|caution|star|second-card|zXvt0/)
+  })
+
+  it('renders code inside blocks as fences and rows of cells as tables', () => {
+    const type = schema([portableText('body')])
+    const result = serializeWithSchema(
+      {
+        body: [
+          {
+            _type: 'codeBlock',
+            _key: 'cb',
+            blocks: [
+              {_key: 'a', filename: 'a.ts', code: 'const a = 1', language: 'ts'},
+              {_key: 'b', code: 'b = 2'},
+            ],
+          },
+          {
+            _type: 'docsTable',
+            _key: 't',
+            headerRows: 1,
+            rows: [
+              {_key: 'r1', cells: [{value: 'Name'}, {value: [block('Meaning')]}]},
+              {_key: 'r2', cells: ['a | b', 'first']},
+            ],
+          },
+        ],
+      },
+      type,
+    )
+    expect(result?.content).toBe(
+      [
+        '[codeBlock: a.ts]',
+        '```ts\nconst a = 1\n```',
+        '```\nb = 2\n```',
+        '[docsTable]',
+        '| Name | Meaning |\n| --- | --- |\n| a \\| b | first |',
+      ].join('\n\n'),
+    )
+  })
+
+  it('renders link annotations whether they carry href or url, and as text with neither', () => {
+    const type = schema([portableText('body')])
+    const result = serializeWithSchema(
+      {
+        body: [
+          block('', {
+            markDefs: [
+              {_type: 'link', _key: 'h', href: 'https://x.test/h'},
+              {_type: 'link', _key: 'u', url: 'https://x.test/u'},
+              {_type: 'link', _key: 'n', reference: {_ref: 'doc'}},
+            ],
+            children: [
+              {_type: 'span', _key: '1', text: 'href', marks: ['h']},
+              {_type: 'span', _key: '2', text: ', ', marks: []},
+              {_type: 'span', _key: '3', text: 'url', marks: ['u']},
+              {_type: 'span', _key: '4', text: ', ', marks: []},
+              {_type: 'span', _key: '5', text: 'internal', marks: ['n']},
+            ],
+          }),
+        ],
+      },
+      type,
+    )
+    expect(result?.content).toBe('[href](https://x.test/h), [url](https://x.test/u), internal')
   })
 
   it('describes inline objects in place', () => {

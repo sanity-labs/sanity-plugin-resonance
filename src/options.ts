@@ -13,16 +13,6 @@ export interface SerializedContent {
 }
 
 /**
- * Where "Ask for access" sends an editor who is not yet granted a Resonance account.
- *
- * @public
- */
-export interface RequestAccessLink {
-  label: string
-  href: string
-}
-
-/**
  * Which version of the document the pane is showing.
  *
  * @public
@@ -48,36 +38,30 @@ export interface ResonanceDocumentContext {
 }
 
 /**
- * {@link ResonanceDocumentContext} plus the framing the plugin resolved for this document, as
- * handed to a `question` function.
- *
- * @public
- */
-export interface ResonanceQuestionContext extends ResonanceDocumentContext {
-  /** Resolved `channel`, or `null` when none is configured. */
-  channel: string | null
-  /** Result of the `url` function, or `null`. */
-  url: string | null
-  /** Resolved `source`, or `null`. */
-  source: string | null
-  /** True when an earlier version is being sent as `compareTo`. */
-  comparing: boolean
-}
-
-/**
- * A prompt: a fixed string, or a function that builds one from the resolved framing.
- *
- * @public
- */
-export type ResonanceQuestion = string | ((ctx: ResonanceQuestionContext) => string)
-
-/**
  * Built-in comparison modes. `'published'` sends the published version as the earlier version
  * whenever the displayed document differs from it; `'none'` never compares.
  *
  * @public
  */
 export type ResonanceCompareMode = 'published' | 'none'
+
+/**
+ * Converts a document to the text audiences read. Return `null` when the document is not ready
+ * to be reviewed.
+ *
+ * @public
+ */
+export type ResonanceSerializer = (
+  document: Partial<SanityDocument>,
+  ctx: ResonanceDocumentContext,
+) => SerializedContent | null
+
+/**
+ * Where a document is (or would be) published. Return `null` when it cannot be computed yet.
+ *
+ * @public
+ */
+export type ResonanceUrlResolver = (ctx: ResonanceDocumentContext) => string | null
 
 /**
  * How one document type is put in front of an audience.
@@ -89,26 +73,19 @@ export interface ResonanceDocumentConfig {
   type: string
   /** Human name of where this lives, e.g. `'the Sanity blog'`. Used in the framing sentence. */
   channel?: string
-  /** Where the document is (or would be) published. Return `null` when it cannot be computed yet. */
-  url?: (ctx: ResonanceDocumentContext) => string | null
+  /** Where the document is (or would be) published; overrides `defaults.url`. */
+  url?: ResonanceUrlResolver
   /** Who publishes it; overrides `defaults.source`. */
   source?: string
-  /**
-   * Converts the document to text. Omit to use the built-in serializer. Return `null` when the
-   * document is not ready to be reviewed.
-   */
-  serialize?: (
-    document: Partial<SanityDocument>,
-    ctx: ResonanceDocumentContext,
-  ) => SerializedContent | null
+  /** Converts the document to text; overrides `defaults.serialize` and the built-in serializer. */
+  serialize?: ResonanceSerializer
   /**
    * What the audience read before. `'published'` sends the published version when the displayed
-   * one differs from it; `'none'` never compares; a function computes the earlier text itself
-   * (return `null` for no comparison).
+   * one differs from it; `'none'` never compares.
    */
-  compare?: ResonanceCompareMode | ((ctx: ResonanceDocumentContext) => string | null)
-  /** Full control over the prompt. A function receives the resolved framing. */
-  question?: ResonanceQuestion
+  compare?: ResonanceCompareMode
+  /** Replaces the plugin's composed prompt with this text. */
+  question?: string
   /** Persona slugs this type is tested against. Omit for every audience on the account. */
   audiences?: string[]
 }
@@ -123,10 +100,12 @@ export interface ResonanceDefaults {
   compare?: ResonanceCompareMode
   /** Who publishes the content, e.g. `'Sanity, the company that makes the product being discussed'`. */
   source?: string
-  /** Prompt for every type. Omit to let Resonance use its neutral prompt. */
-  question?: ResonanceQuestion
-  /** Persona slugs for every type. Omit for every audience on the account. */
-  audiences?: string[]
+  /** Prompt for every type. Omit to let the plugin compose one from the framing. */
+  question?: string
+  /** Serializer for every type. Omit to use the built-in serializer. */
+  serialize?: ResonanceSerializer
+  /** URL resolver for every type. */
+  url?: ResonanceUrlResolver
 }
 
 /**
@@ -135,8 +114,11 @@ export interface ResonanceDefaults {
  * @public
  */
 export interface ResonancePluginOptions {
-  /** Resonance base URL. `https:` is required, except `http://localhost` or `http://127.0.0.1` (any port). */
-  apiUrl: string
+  /**
+   * Resonance base URL. Defaults to `https://resonance.cx`. `https:` is required, except
+   * `http://localhost` or `http://127.0.0.1` (any port).
+   */
+  apiUrl?: string
   /**
    * Which schema types get the inspector and how each is put in front of an audience. A bare
    * string uses the defaults for that type.
@@ -153,8 +135,16 @@ export interface ResonancePluginOptions {
   organizationId?: string
   /** Panel and button label. Defaults to "Resonance". */
   title?: string
-  /** Where "Ask for access" goes. When omitted the button copies a prewritten message. */
-  requestAccess?: RequestAccessLink
+}
+
+/** Where the plugin points when `apiUrl` is omitted. */
+export const DEFAULT_API_URL = 'https://resonance.cx'
+
+/** Plugin options after defaults have been applied; what the inspector works with. */
+export type ResolvedPluginOptions = ResonancePluginOptions & {apiUrl: string}
+
+export function resolveOptions(options: ResonancePluginOptions): ResolvedPluginOptions {
+  return {...options, apiUrl: options.apiUrl ?? DEFAULT_API_URL}
 }
 
 /** Server-side limit on `content` and `compareTo`, mirrored client-side to avoid a 400. */
@@ -199,9 +189,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function validateQuestion(question: unknown, where: string): void {
-  if (question === undefined) return
-  if (typeof question === 'string' || typeof question === 'function') return
-  throw new Error(`resonance: ${where} \`question\` must be a string or a function.`)
+  if (question === undefined || typeof question === 'string') return
+  throw new Error(`resonance: ${where} \`question\` must be a string.`)
+}
+
+function validateCompare(compare: unknown, where: string): void {
+  if (compare === undefined) return
+  if (typeof compare === 'string' && COMPARE_MODES.has(compare)) return
+  throw new Error(`resonance: ${where} \`compare\` must be 'published' or 'none'.`)
+}
+
+function validateSerialize(serialize: unknown, where: string): void {
+  if (serialize === undefined || typeof serialize === 'function') return
+  throw new Error(
+    `resonance: ${where} \`serialize\` must be a function returning {content} or null.`,
+  )
+}
+
+function validateUrl(url: unknown, where: string): void {
+  if (url === undefined || typeof url === 'function') return
+  throw new Error(`resonance: ${where} \`url\` must be a function returning a URL or null.`)
 }
 
 function validateAudiences(audiences: unknown, where: string): void {
@@ -215,16 +222,13 @@ function validateDefaults(defaults: unknown): void {
   if (!isRecord(defaults)) {
     throw new Error('resonance: `defaults` must be an object when provided.')
   }
-  if (defaults.compare !== undefined) {
-    if (typeof defaults.compare !== 'string' || !COMPARE_MODES.has(defaults.compare)) {
-      throw new Error("resonance: `defaults.compare` must be 'published' or 'none'.")
-    }
-  }
+  validateCompare(defaults.compare, '`defaults`')
   if (defaults.source !== undefined && typeof defaults.source !== 'string') {
     throw new Error('resonance: `defaults.source` must be a string when provided.')
   }
   validateQuestion(defaults.question, '`defaults`')
-  validateAudiences(defaults.audiences, '`defaults`')
+  validateSerialize(defaults.serialize, '`defaults`')
+  validateUrl(defaults.url, '`defaults`')
 }
 
 function validateDocument(entry: unknown, index: number): string {
@@ -243,21 +247,9 @@ function validateDocument(entry: unknown, index: number): string {
   if (entry.source !== undefined && typeof entry.source !== 'string') {
     throw new Error(`resonance: ${where} \`source\` must be a string when provided.`)
   }
-  if (entry.url !== undefined && typeof entry.url !== 'function') {
-    throw new Error(`resonance: ${where} \`url\` must be a function returning a URL or null.`)
-  }
-  if (entry.serialize !== undefined && typeof entry.serialize !== 'function') {
-    throw new Error(
-      `resonance: ${where} \`serialize\` must be a function returning {content} or null.`,
-    )
-  }
-  if (
-    entry.compare !== undefined &&
-    typeof entry.compare !== 'function' &&
-    (typeof entry.compare !== 'string' || !COMPARE_MODES.has(entry.compare))
-  ) {
-    throw new Error(`resonance: ${where} \`compare\` must be 'published', 'none', or a function.`)
-  }
+  validateUrl(entry.url, where)
+  validateSerialize(entry.serialize, where)
+  validateCompare(entry.compare, where)
   validateQuestion(entry.question, where)
   validateAudiences(entry.audiences, where)
 
@@ -272,7 +264,7 @@ export function validateOptions(options: Partial<ResonancePluginOptions> | undef
     )
   }
 
-  validateApiUrl(options.apiUrl)
+  if (options.apiUrl !== undefined) validateApiUrl(options.apiUrl)
 
   if (!Array.isArray(options.documents) || options.documents.length === 0) {
     throw new Error(
@@ -303,10 +295,7 @@ export function validateOptions(options: Partial<ResonancePluginOptions> | undef
     throw new Error('resonance: `organizationId` must be a string when provided.')
   }
 
-  if (options.requestAccess !== undefined) {
-    const {label, href} = options.requestAccess
-    if (typeof label !== 'string' || typeof href !== 'string' || href === '') {
-      throw new Error('resonance: `requestAccess` needs both `label` and `href` strings.')
-    }
+  if (options.title !== undefined && typeof options.title !== 'string') {
+    throw new Error('resonance: `title` must be a string when provided.')
   }
 }

@@ -1,6 +1,6 @@
 import {defineDocumentInspector, type DocumentInspector, type DocumentInspectorProps} from 'sanity'
 
-import type {ResonancePluginOptions} from '../options'
+import type {ResolvedPluginOptions} from '../options'
 import type {ResolvedDocumentConfig} from '../resolve-documents'
 import {ResonanceIcon} from './ResonanceIcon'
 import {ResonanceInspector} from './ResonanceInspector'
@@ -9,7 +9,7 @@ export const RESONANCE_INSPECTOR_NAME = 'resonance'
 
 /** Binds the host's options to the inspector component; the Studio only passes document props. */
 export function defineResonanceInspector(
-  options: ResonancePluginOptions,
+  options: ResolvedPluginOptions,
   documents: ReadonlyMap<string, ResolvedDocumentConfig>,
 ): DocumentInspector {
   const title = options.title ?? 'Resonance'

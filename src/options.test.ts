@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest'
 
 import {defineResonanceDocument} from './define-document'
-import {type ResonancePluginOptions, validateOptions} from './options'
+import {type ResonancePluginOptions, resolveOptions, validateOptions} from './options'
 import {resolveDocuments} from './resolve-documents'
 import {defaultSerialize} from './serialize/default-serializer'
 
@@ -32,12 +32,12 @@ describe('validateOptions', () => {
             source: 'Sanity',
             serialize: () => null,
             compare: 'none',
-            question: () => 'q',
+            question: 'q',
             audiences: ['dev'],
           },
-          defineResonanceDocument({type: 'guide', compare: () => null, question: 'Read it.'}),
+          defineResonanceDocument({type: 'guide', compare: 'none', question: 'Read it.'}),
         ],
-        defaults: {compare: 'published', source: 'Sanity', question: 'q', audiences: ['a']},
+        defaults: {compare: 'published', source: 'Sanity', question: 'q', serialize: () => null},
       }),
     ).not.toThrow()
   })
@@ -46,6 +46,26 @@ describe('validateOptions', () => {
     expect(() => validateOptions({...valid, apiUrl: 'http://resonance.example'})).toThrow(/https/)
     expect(() => validateOptions({...valid, apiUrl: 'not a url'})).toThrow(/valid URL/)
     expect(() => validateOptions({...valid, apiUrl: ''})).toThrow(/non-empty/)
+  })
+
+  it('defaults apiUrl to production Resonance and still validates an explicit one', () => {
+    const {apiUrl: _omitted, ...withoutUrl} = valid
+    expect(() => validateOptions(withoutUrl)).not.toThrow()
+    expect(resolveOptions(withoutUrl).apiUrl).toBe('https://resonance.cx')
+    expect(resolveOptions(valid).apiUrl).toBe('https://resonance.example')
+  })
+
+  it('checks defaults.serialize, defaults.url and title', () => {
+    expect(() => validateOptions(loose({...valid, defaults: {serialize: 'no'}}))).toThrow(
+      /`defaults` `serialize` must be a function/,
+    )
+    expect(() => validateOptions(loose({...valid, defaults: {url: '/x'}}))).toThrow(
+      /`defaults` `url` must be a function/,
+    )
+    expect(() => validateOptions(loose({...valid, defaults: {question: () => 'q'}}))).toThrow(
+      /`defaults` `question` must be a string/,
+    )
+    expect(() => validateOptions(loose({...valid, title: 3}))).toThrow(/`title` must be a string/)
   })
 
   it('requires the Resonance account uid', () => {
@@ -81,9 +101,9 @@ describe('validateOptions', () => {
   it('rejects a bad compare value and names the type', () => {
     expect(() =>
       validateOptions(loose({...valid, documents: [{type: 'post', compare: 'draft'}]})),
-    ).toThrow(/document type "post": `compare` must be 'published', 'none', or a function/)
+    ).toThrow(/document type "post": `compare` must be 'published' or 'none'/)
     expect(() => validateOptions(loose({...valid, defaults: {compare: () => null}}))).toThrow(
-      /defaults\.compare/,
+      /`defaults` `compare` must be 'published' or 'none'/,
     )
   })
 
@@ -118,9 +138,11 @@ describe('resolveDocuments', () => {
   })
 
   it('lets per-type values override defaults, and defaults override built-ins', () => {
-    const question = () => 'custom'
+    const question = 'custom'
+    const serialize = () => null
+    const url = () => 'https://x.test'
     const resolved = resolveDocuments({
-      defaults: {compare: 'none', source: 'Sanity', audiences: ['a'], question: 'default q'},
+      defaults: {compare: 'none', source: 'Sanity', question: 'default q', serialize, url},
       documents: [
         'post',
         {type: 'article', compare: 'published', source: 'Partner', audiences: [], question},
@@ -130,8 +152,10 @@ describe('resolveDocuments', () => {
     expect(resolved.get('post')).toMatchObject({
       compare: 'none',
       source: 'Sanity',
-      audiences: ['a'],
+      audiences: null,
       question: 'default q',
+      serialize,
+      url,
     })
     expect(resolved.get('article')).toMatchObject({
       compare: 'published',

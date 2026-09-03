@@ -1,34 +1,10 @@
-export interface RequestAccessMessageInput {
-  email: string | null
-  origin: string
-  projectId: string
-  dataset: string
-  accountUid?: string
-}
-
-export function requestAccessMessage({
-  email,
-  origin,
-  projectId,
-  dataset,
-  accountUid,
-}: RequestAccessMessageInput): string {
-  return `Hi — could you add me to Resonance so I can run audience tests from the Studio? Sanity user: ${
-    email ?? 'unknown'
-  }. Studio: ${origin}. Project: ${projectId} (${dataset}). Account: ${
-    accountUid ?? 'whichever account this Studio maps to'
-  }.`
-}
-
 export const accessCopy = {
   checking: {
     heading: 'Connecting to Resonance…',
   },
   noToken: {
-    heading: 'Sign in again to use Resonance.',
-    body: "Your Studio session doesn't have a token Resonance can use. Sign out and back in, then reopen this panel.",
-    footnote: "Studios below sanity 5.30.0 need `auth.loginMethod: 'token'`.",
-    signOut: 'Sign out',
+    heading: 'Sign out and back in to link Resonance to your Sanity account.',
+    body: "This Studio signed in with a cookie, so there is no session token to hand to Resonance. Signing out and back in from the user menu stores one. If this keeps happening, the Studio owner can set auth.loginMethod: 'token'.",
     retry: 'Retry',
   },
   unreachable: {
@@ -38,17 +14,13 @@ export const accessCopy = {
   },
   unauthorized: {
     heading: "Resonance couldn't verify your Sanity session.",
-    body: "This usually means Resonance's Sanity login is off for this environment or your session has expired. Try signing out and in; if it persists, tell a Resonance admin.",
-    signOut: 'Sign out',
+    body: 'Resonance rejected the session. Sign out and back in from the user menu; if it persists, ask your Resonance admin.',
     retry: 'Retry',
   },
   noGrant: {
     heading: "You're not in Resonance yet.",
-    bodyBefore: 'Ask a Resonance admin to add ',
-    bodyAfter: (accountLabel: string | undefined) =>
-      ` to the ${accountLabel ?? 'Resonance'} account and you'll get audience feedback here.`,
-    askForAccess: 'Ask for access',
-    copied: 'Copied',
+    body: (email: string | null) =>
+      `Ask your Resonance admin for access${email ? ` for ${email}` : ''}, then check again.`,
     checkAgain: 'Check again',
   },
   noPersonas: {
@@ -61,5 +33,4 @@ export const accessCopy = {
     heading: 'Resonance is not available right now.',
     retry: 'Retry',
   },
-  copyFailed: "Couldn't copy",
 } as const

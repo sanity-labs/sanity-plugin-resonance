@@ -23,10 +23,14 @@ re-checked on every request, so removing someone takes effect immediately.
 
 **In the Studio**
 
-- `sanity` 5.30.0 or newer. From that version the Studio's default login keeps a token the
-  plugin can forward. On older Studios add `auth: {loginMethod: 'token'}` to `sanity.config.ts`.
-- Editors whose session predates that version have no stored token until they sign out and back
-  in. The panel tells them so.
+- `sanity` 5.30.0 or newer.
+- A token for the plugin to forward. The Studio only stores one when an editor actually goes
+  through the login flow on that origin. With the default `auth.loginMethod` (`dual`), a Studio
+  that can reach a valid Sanity cookie signs the editor in without the login flow, so there is no
+  token: this is the normal case on a `*.sanity.io` host and on every new preview URL, and the
+  panel then asks the editor to sign out and back in. Setting `auth: {loginMethod: 'token'}` in
+  `sanity.config.ts` makes the Studio always use the login flow, so the token is always there. It
+  costs every editor one re-login when it ships. Recommended for any Studio that has this plugin.
 - The `organizationId` option is optional. Without it the plugin looks the organization up once
   from the project.
 - `accountUid` is required. The panel confirms with Resonance that the signed-in editor is granted
@@ -39,19 +43,20 @@ settings for it)
 2. Each editor's email must be granted access to the Resonance account you want tests to land
    in.
 
-The panel reports which of these is missing, in editor terms, and gives the editor something to
-send.
+The panel reports which of these is missing, in editor terms.
 
 ## What editors see
 
-| Panel state                                    | What it means                                                                                          | Who fixes it                                                                                                                                                 |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Sign in again to use Resonance.                | This Studio session has no token to forward.                                                           | The editor: sign out and back in. If it persists on an old Studio, the Studio owner sets `loginMethod: 'token'`.                                             |
-| Couldn't reach Resonance.                      | The request got no response (Resonance is down, the `apiUrl` is wrong, or the network is blocking it). | The editor retries; if it persists, the Studio owner checks `apiUrl`, then the Resonance contact.                                                            |
-| Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                                                        | The editor signs out and in; if it persists, your Resonance contact.                                                                                         |
-| You're not in Resonance yet.                   | The session is valid but this email has no access to the configured Resonance account.                 | Your Resonance contact. **Ask for access** opens `requestAccess.href` or copies a ready message with the editor's email, Studio origin, project and dataset. |
+| Panel state                                                    | What it means                                                                                          | Who fixes it                                                                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Sign out and back in to link Resonance to your Sanity account. | The Studio signed in with a cookie; there is no token to forward.                                      | The editor: sign out and back in from the user menu. The Studio owner sets `loginMethod: 'token'` so it does not recur. |
+| Couldn't reach Resonance.                                      | The request got no response (Resonance is down, the `apiUrl` is wrong, or the network is blocking it). | The editor retries; if it persists, the Studio owner checks `apiUrl`, then the Resonance contact.                       |
+| Resonance couldn't verify your Sanity session.                 | Resonance rejected the session.                                                                        | The editor signs out and in from the user menu; if it persists, your Resonance contact.                                 |
+| You're not in Resonance yet.                                   | The session is valid but this email has no access to the configured Resonance account.                 | Your Resonance contact grants the email; the editor presses **Check again**.                                            |
 
 ## Local development
 
-Point `apiUrl` at the Resonance you want to talk to. Plain `http` is accepted for `localhost`
-and `127.0.0.1` only; every other `apiUrl` must be `https`.
+`apiUrl` defaults to production Resonance. Point it elsewhere to talk to another deployment.
+Plain `http` is accepted for `localhost` and `127.0.0.1` only; every other `apiUrl` must be
+`https`. Results and option choices are remembered per `apiUrl` host, so switching does not mix
+them up.
