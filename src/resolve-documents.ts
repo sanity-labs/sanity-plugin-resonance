@@ -1,12 +1,9 @@
-import type {SanityDocument} from 'sanity'
-
 import type {
   ResonanceCompareMode,
   ResonanceDocumentConfig,
-  ResonanceDocumentContext,
   ResonancePluginOptions,
-  ResonanceQuestion,
-  SerializedContent,
+  ResonanceSerializer,
+  ResonanceUrlResolver,
 } from './options'
 import {defaultSerialize} from './serialize/default-serializer'
 
@@ -18,14 +15,11 @@ import {defaultSerialize} from './serialize/default-serializer'
 export interface ResolvedDocumentConfig {
   type: string
   channel: string | null
-  url: ((ctx: ResonanceDocumentContext) => string | null) | null
+  url: ResonanceUrlResolver | null
   source: string | null
-  serialize: (
-    document: Partial<SanityDocument>,
-    ctx: ResonanceDocumentContext,
-  ) => SerializedContent | null
-  compare: ResonanceCompareMode | ((ctx: ResonanceDocumentContext) => string | null)
-  question: ResonanceQuestion | null
+  serialize: ResonanceSerializer
+  compare: ResonanceCompareMode
+  question: string | null
   audiences: string[] | null
 }
 
@@ -48,12 +42,12 @@ export function resolveDocuments(
     resolved.set(config.type, {
       type: config.type,
       channel: config.channel ?? null,
-      url: config.url ?? null,
+      url: config.url ?? defaults.url ?? null,
       source: config.source ?? defaults.source ?? null,
-      serialize: config.serialize ?? defaultSerialize,
+      serialize: config.serialize ?? defaults.serialize ?? defaultSerialize,
       compare: config.compare ?? defaults.compare ?? 'published',
       question: config.question ?? defaults.question ?? null,
-      audiences: config.audiences ?? defaults.audiences ?? null,
+      audiences: config.audiences ?? null,
     })
   }
 

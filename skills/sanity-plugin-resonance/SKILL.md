@@ -43,15 +43,22 @@ import {resonance} from '@sanity-labs/sanity-plugin-resonance'
 
 plugins: [
   resonance({
-    apiUrl: 'https://resonance.cx',
+    accountUid: '<the Resonance account uid>',
     documents: ['post', 'article'],
   }),
 ]
 ```
 
-Keep `apiUrl` as a plain string unless the host already reads config from environment variables,
-in which case follow the host's pattern (Studio env vars are `SANITY_STUDIO_*` and are public).
-If the user has a Resonance account uid, pass `accountUid` so the panel skips account discovery.
+`accountUid` is required: the uid of the Resonance account the Studio tests against. Ask the user
+for it, or the user's Resonance contact. The panel checks each editor is granted that account
+before it offers a run. `apiUrl` defaults to production Resonance; only set it for a local or
+staging deployment, following the host's env-var pattern if it has one (Studio env vars are
+`SANITY_STUDIO_*` and are public).
+
+Recommend `auth: {loginMethod: 'token'}` in `sanity.config.ts` alongside the plugin. Without it a
+Studio that signs in by cookie (any `*.sanity.io` host, every preview URL) has no token for the
+plugin to forward and editors are told to sign out and back in. Say plainly that it logs every
+editor out once when it ships.
 
 ## 3. Configure it well
 
@@ -69,11 +76,13 @@ discussed'`. Without it audiences spend their answer wondering whether this is v
 4. **`compare`**: leave the default (`'published'`) unless the type is never revised in place, in
    which case `'none'` removes a toggle editors would never use.
 5. **`serialize`**: only when the built-in serializer misses the point of the type: page-builder
-   arrays, meaning carried by custom blocks, unusual field names. Start from `defaultSerialize`
-   and add to it. Return `{title?, content}` as markdown or `null` for "not ready". Never include
-   asset URLs or raw JSON in `content`.
-6. **`question`**: rarely. Only when the user wants a specific task framed ("would you forward
-   this and to whom?").
+   arrays, meaning carried by custom blocks, unusual field names. Check the default first: it
+   already reads titles, labels and body text out of custom blocks, renders code as fences and
+   rows of cells as tables, and skips links, ids and asset data. Start from `defaultSerialize` and
+   add to it. Return `{title?, content}` as markdown or `null` for "not ready". A serializer that
+   covers several types goes in `defaults.serialize`; per-type `serialize` overrides it.
+6. **`question`**: rarely. A plain string that replaces the composed prompt, only when the user
+   wants a specific task framed ("would you forward this and to whom?").
 
 Use `defineResonanceDocument({...})` for each configured type so the object is type-checked
 outside the `resonance()` call. Everything in `defaults` applies to all types; per-type fields
@@ -101,7 +110,7 @@ const article = defineResonanceDocument({
 })
 
 resonance({
-  apiUrl: 'https://resonance.cx',
+  accountUid: '<the Resonance account uid>',
   defaults: {source: 'Acme, the company that makes the product being discussed'},
   documents: [post, article],
 })
@@ -128,14 +137,13 @@ The panel shows one of these instead of the run card when something is missing. 
 concrete owner; tell the user who needs to act. There are no server settings to change from the
 Studio side.
 
-| Panel says                                     | Cause                                                                     | Fix                                                                                                      |
-| ---------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Sign in again to use Resonance.                | The Studio session has no token to forward.                               | Editor signs out and back in. If it persists and `sanity < 5.30`, set `auth: {loginMethod: 'token'}`.    |
-| Couldn't reach Resonance.                      | The request got no response (Resonance down, wrong `apiUrl`, or network). | The editor retries; if it persists, the Studio owner checks `apiUrl`, then the user's Resonance contact. |
-| Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                           | Editor signs out and in; if it persists, the user's Resonance contact.                                   |
-| You're not in Resonance yet.                   | The editor's email has no access to a Resonance account.                  | The user's Resonance contact grants the email. The panel's button copies a ready message.                |
-| Which Resonance account?                       | Email has access to several accounts, no `accountUid` configured.         | Pick one, or set `accountUid`.                                                                           |
-| This account has no audiences yet.             | The Resonance account has no audiences defined.                           | Define audiences in Resonance.                                                                           |
+| Panel says                                                     | Cause                                                                     | Fix                                                                                                      |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Sign out and back in to link Resonance to your Sanity account. | The Studio signed in by cookie; no token to forward.                      | Editor signs out and back in from the user menu. Studio owner sets `auth: {loginMethod: 'token'}`.       |
+| Couldn't reach Resonance.                                      | The request got no response (Resonance down, wrong `apiUrl`, or network). | The editor retries; if it persists, the Studio owner checks `apiUrl`, then the user's Resonance contact. |
+| Resonance couldn't verify your Sanity session.                 | Resonance rejected the session.                                           | Editor signs out and in; if it persists, the user's Resonance contact.                                   |
+| You're not in Resonance yet.                                   | The editor's email has no access to the configured Resonance account.     | The user's Resonance contact grants the email; the editor presses Check again.                           |
+| This account has no audiences yet.                             | The Resonance account has no audiences defined.                           | Define audiences in Resonance.                                                                           |
 
 `docs/auth.md` in the repo explains the model. The plugin never holds a Resonance credential; it
 forwards the editor's own Sanity session, which Resonance verifies and then authorises by email.

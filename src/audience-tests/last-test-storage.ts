@@ -9,17 +9,29 @@ export interface LastTestRecord {
 }
 
 export interface LastTestKeyParts {
+  /** The Resonance host, so two deployments that share an account uid do not share results. */
+  host: string
   projectId: string
   dataset: string
   publishedDocumentId: string
 }
 
+/** `new URL(apiUrl).host`, for storage keys. */
+export function storageHost(apiUrl: string): string {
+  try {
+    return new URL(apiUrl).host
+  } catch {
+    return apiUrl
+  }
+}
+
 export function lastTestStorageKey({
+  host,
   projectId,
   dataset,
   publishedDocumentId,
 }: LastTestKeyParts): string {
-  return `sanity-plugin-resonance:last:${projectId}:${dataset}:${publishedDocumentId}`
+  return `sanity-plugin-resonance:last:${host}:${projectId}:${dataset}:${publishedDocumentId}`
 }
 
 function isLastTestRecord(value: unknown): value is LastTestRecord {

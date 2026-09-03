@@ -1,7 +1,7 @@
 import {definePlugin} from 'sanity'
 
 import {defineResonanceInspector} from './inspector/define-inspector'
-import {type ResonancePluginOptions, validateOptions} from './options'
+import {type ResonancePluginOptions, resolveOptions, validateOptions} from './options'
 import {resolveDocuments} from './resolve-documents'
 
 /**
@@ -18,7 +18,7 @@ import {resolveDocuments} from './resolve-documents'
  *   // ...
  *   plugins: [
  *     resonance({
- *       apiUrl: 'https://resonance.cx',
+ *       accountUid: 'e30b881c-…',
  *       documents: ['post', 'article'],
  *     }),
  *   ],
@@ -29,8 +29,9 @@ import {resolveDocuments} from './resolve-documents'
  */
 export const resonance = definePlugin<ResonancePluginOptions>((options) => {
   validateOptions(options)
-  const documents = resolveDocuments(options)
-  const inspector = defineResonanceInspector(options, documents)
+  const resolved = resolveOptions(options)
+  const documents = resolveDocuments(resolved)
+  const inspector = defineResonanceInspector(resolved, documents)
 
   return {
     name: 'resonance',

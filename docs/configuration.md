@@ -5,19 +5,18 @@ guided version of this; come here when you need the exact shape.
 
 ## `resonance(options)`
 
-| Option           | Type                                       | Notes                                                                                                                                                       |
-| ---------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apiUrl`         | `string`                                   | Resonance base URL. `https:` required; `http:` is accepted only for `localhost` and `127.0.0.1`. Invalid values throw when the Studio config is evaluated.  |
-| `documents`      | `Array<string \| ResonanceDocumentConfig>` | Required, non-empty, no type listed twice. A string is a type name with the defaults; an object configures one type (below).                                |
-| `defaults`       | `ResonanceDefaults?`                       | `{compare?, source?, question?, audiences?}` applied to every type. Per-type values override these; built-ins fill the rest.                                |
-| `accountUid`     | `string?`                                  | Use this Resonance account and skip discovery. Needed when the same email is granted several accounts and you want no picker.                               |
-| `organizationId` | `string?`                                  | Skips the `/projects/{projectId}` lookup used to fill `X-Sanity-Organization-Id`.                                                                           |
-| `title`          | `string?`                                  | Panel and button label. Defaults to `Resonance`.                                                                                                            |
-| `requestAccess`  | `{label: string; href: string}?`           | Target of the "Ask for access" button. When omitted, the button copies a prewritten message (with the editor's email, Studio origin, project, and dataset). |
+| Option           | Type                                       | Notes                                                                                                                                |
+| ---------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `accountUid`     | `string`                                   | Required. The Resonance account this Studio tests against. The panel confirms the editor is granted it before offering a run.        |
+| `documents`      | `Array<string \| ResonanceDocumentConfig>` | Required, non-empty, no type listed twice. A string is a type name with the defaults; an object configures one type (below).         |
+| `defaults`       | `ResonanceDefaults?`                       | `{compare?, source?, question?, serialize?, url?}` applied to every type. Per-type values override these; built-ins fill the rest.   |
+| `apiUrl`         | `string?`                                  | Resonance base URL. Defaults to `https://resonance.cx`. `https:` required; `http:` is accepted only for `localhost` and `127.0.0.1`. |
+| `organizationId` | `string?`                                  | Skips the `/projects/{projectId}` lookup used to fill `X-Sanity-Organization-Id`.                                                    |
+| `title`          | `string?`                                  | Panel and button label. Defaults to `Resonance`.                                                                                     |
 
 Validation runs when the plugin is defined. Every message starts with `resonance:` and names the
 offending document type, for example ``resonance: document type "post": `compare` must be
-'published', 'none', or a function.`` A broken config fails the Studio at startup rather than
+'published' or 'none'.`` A broken config fails the Studio at startup rather than
 rendering a broken panel.
 
 ## `ResonanceDocumentConfig`
@@ -25,16 +24,16 @@ rendering a broken panel.
 An element of `documents`. Wrap it in `defineResonanceDocument(config)` for type inference when
 it lives outside the `resonance()` call; the helper returns its argument unchanged.
 
-| Field       | Type                                                                                              | Default                             | Notes                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `type`      | `string`                                                                                          | required                            | Schema type name.                                                                                                                |
-| `channel`   | `string?`                                                                                         | none                                | Human name of where it lives, e.g. `'the Sanity blog'`. Used in the framing sentence.                                            |
-| `url`       | `(ctx: ResonanceDocumentContext) => string \| null`                                               | none                                | Where the document is or will be published. Return `null` when it cannot be computed yet.                                        |
-| `source`    | `string?`                                                                                         | `defaults.source`                   | Who publishes it.                                                                                                                |
-| `serialize` | `(document: Partial<SanityDocument>, ctx: ResonanceDocumentContext) => SerializedContent \| null` | built-in serializer                 | Converts the document to `{title?, content}`. Return `null` when not ready. Also used on the published version when comparing.   |
-| `compare`   | `'published' \| 'none' \| ((ctx: ResonanceDocumentContext) => string \| null)`                    | `defaults.compare` or `'published'` | What the audience read before. A function returns the earlier text or `null`.                                                    |
-| `question`  | `string \| ((ctx: ResonanceQuestionContext) => string)`                                           | `defaults.question` or composed     | A string is sent verbatim; a function replaces the composed prompt and receives the resolved framing.                            |
-| `audiences` | `string[]?`                                                                                       | `defaults.audiences` or all         | Audience slugs sent as `personas`. The starting selection in the panel; editors can narrow it per run. An empty array means all. |
+| Field       | Type                    | Default                             | Notes                                                                                                                            |
+| ----------- | ----------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `type`      | `string`                | required                            | Schema type name.                                                                                                                |
+| `channel`   | `string?`               | none                                | Human name of where it lives, e.g. `'the Sanity blog'`. Used in the framing sentence.                                            |
+| `url`       | `ResonanceUrlResolver?` | `defaults.url`                      | Where the document is or will be published. Return `null` when it cannot be computed yet.                                        |
+| `source`    | `string?`               | `defaults.source`                   | Who publishes it.                                                                                                                |
+| `serialize` | `ResonanceSerializer?`  | `defaults.serialize` or built-in    | Converts the document to `{title?, content}`. Return `null` when not ready. Also used on the published version when comparing.   |
+| `compare`   | `'published' \| 'none'` | `defaults.compare` or `'published'` | What the audience read before.                                                                                                   |
+| `question`  | `string?`               | `defaults.question` or composed     | Sent verbatim in place of the composed prompt.                                                                                   |
+| `audiences` | `string[]?`             | all                                 | Audience slugs sent as `personas`. The starting selection in the panel; editors can narrow it per run. An empty array means all. |
 
 ## Types
 
@@ -53,12 +52,12 @@ interface ResonanceDocumentContext {
   dataset: string
 }
 
-interface ResonanceQuestionContext extends ResonanceDocumentContext {
-  channel: string | null
-  url: string | null
-  source: string | null
-  comparing: boolean
-}
+type ResonanceSerializer = (
+  document: Partial<SanityDocument>,
+  ctx: ResonanceDocumentContext,
+) => SerializedContent | null
+
+type ResonanceUrlResolver = (ctx: ResonanceDocumentContext) => string | null
 ```
 
 `SanityDocument` has an `unknown` index signature, so field values need narrowing
@@ -77,9 +76,16 @@ into plain object fields, and never follows references.
   an italic standfirst.
 - Every Portable Text array is rendered to markdown in schema order. Fields whose names start
   with `seo`, `meta` or `og`, and fields marked `hidden: true`, are skipped.
-- Custom blocks: objects with a `code` string become fenced code; images become `[image: alt]`;
-  anything else becomes `[type]` or `[type: text]`. No asset URLs or JSON ever appear in the
-  output.
+- Custom blocks become one `[type: what it says]` line built from the block's readable fields:
+  its `title`/`heading`/`name`/`label` first, then every other string and Portable Text field in
+  order, recursing into nested objects and arrays (cards, tabs, steps) up to three levels. Objects
+  with a `code` string become fences, `rows` of `cells` become a GFM table (first row as header),
+  images become `[image: alt]`. Links, ids, slugs, references, asset data and presentation fields
+  (`style`, `tone`, `layout`, `size`, `color`, …) are skipped, as is any string that looks like a
+  URL or an id. A block with nothing readable is still named (`[youtube]`). No asset URLs or JSON
+  ever appear in the output.
+- `link` annotations render as markdown links from `href` or `url`; a link with neither (an
+  internal reference) renders as its text.
 - Other `string`/`text` fields (slugs, dates, categories) are not content and are skipped.
 - Returns `null` when nothing but a title was found.
 - Over 100,000 bytes, the text is cut at a paragraph boundary with `[truncated for review]`
@@ -132,8 +138,7 @@ serializer whenever the pane shows a draft or release version. If the result dif
 displayed content, the options offer "Compare with the published version", on by default. Turning
 it off sends only `content` and drops the comparison sentence. Nothing is compared when the
 document has never been published, when the draft reads the same as the published version, or
-when the published version itself is displayed. A `compare` function's non-empty result is
-always offered.
+when the published version itself is displayed.
 
 ## Same inputs, same test
 
@@ -148,12 +153,14 @@ has changed since.
 
 All in `localStorage`, all best-effort:
 
-| Key                                                                  | Value                                                |
-| -------------------------------------------------------------------- | ---------------------------------------------------- |
-| `sanity-plugin-resonance:last:{projectId}:{dataset}:{documentId}`    | `{testId, accountUid, contentHash, createdAt}`       |
-| `sanity-plugin-resonance:compare:{projectId}:{dataset}:{documentId}` | the compare toggle                                   |
-| `sanity-plugin-resonance:audiences:{projectId}:{documentType}`       | the chosen audiences, or absent for "all"            |
-| `sanity-plugin-resonance:account:{projectId}`                        | the chosen account when an editor is granted several |
+| Key                                                                         | Value                                          |
+| --------------------------------------------------------------------------- | ---------------------------------------------- |
+| `sanity-plugin-resonance:last:{host}:{projectId}:{dataset}:{documentId}`    | `{testId, accountUid, contentHash, createdAt}` |
+| `sanity-plugin-resonance:compare:{host}:{projectId}:{dataset}:{documentId}` | the compare toggle                             |
+| `sanity-plugin-resonance:audiences:{host}:{projectId}:{documentType}`       | the chosen audiences, or absent for "all"      |
+
+`{host}` is the `apiUrl` host, so a Studio pointed at two Resonance deployments keeps separate
+memories even when both know the same account.
 
 ## Exports
 
@@ -161,15 +168,10 @@ All in `localStorage`, all best-effort:
 - `defineResonanceDocument(config)`: identity helper for a `ResonanceDocumentConfig`.
 - `defaultSerialize(document, {schemaType})`: the built-in serializer. `schemaType` may be a full
   `ObjectSchemaType` or the subset it reads (`SerializableSchemaType`).
-- `ResonanceApiError`: thrown by the transport. `kind: 'network'` (no response, `status: null`)
-  or `kind: 'http'` (`status` set, `message` from the server's `{error}` body).
-- `createResonanceFetch({apiUrl, getToken, getOrganizationId})`: the transport the plugin uses,
-  for hosts that want to call other `/v1/orgs/…` routes with the same auth. Returns
-  `(path, init?) => Promise<Response>` with a `.json<T>()` convenience.
 - Types: `ResonancePluginOptions`, `ResonanceDocumentConfig`, `ResonanceDefaults`,
-  `ResonanceDocumentContext`, `ResonanceQuestionContext`, `ResonanceQuestion`,
+  `ResonanceDocumentContext`, `ResonanceSerializer`, `ResonanceUrlResolver`,
   `ResonanceCompareMode`, `ResonanceDocumentVariant`, `SerializedContent`,
-  `SerializableSchemaType`, `SerializableField`, `RequestAccessLink`, `ResonanceAccount`,
-  `ResonanceFetch`, `ResonanceFetchOptions`, `AudienceTestRead`, `AudienceTestPersonaResult`,
-  `AudienceTestStatus`, `AudienceTestRunStatus`, `AudienceTestResonance`,
-  `AudienceTestPersonaResponse`, `AudienceTestCreateInput`, `ResonanceScore`, `RunResonance`.
+  `SerializableSchemaType`, `SerializableField`.
+
+That is the whole public surface. The transport and the audience-test response types are internal
+until a host needs them.

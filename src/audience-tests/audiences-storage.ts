@@ -1,14 +1,16 @@
 import {readStorage, removeStorage, writeStorage} from '../storage'
 
-/** Which audiences to send a document type to is remembered per project and type. */
+/** Which audiences to send a document type to is remembered per Resonance host, project and type. */
 export function audiencesStorageKey({
+  host,
   projectId,
   documentType,
 }: {
+  host: string
   projectId: string
   documentType: string
 }): string {
-  return `sanity-plugin-resonance:audiences:${projectId}:${documentType}`
+  return `sanity-plugin-resonance:audiences:${host}:${projectId}:${documentType}`
 }
 
 /** `null` means "no choice made": the host's configured audiences, or all of them. */

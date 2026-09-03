@@ -2,7 +2,7 @@ import {CloseIcon} from '@sanity/icons/Close'
 import {Box, Button, Card, Flex, Text} from '@sanity/ui'
 import type {DocumentInspectorProps} from 'sanity'
 
-import type {ResonancePluginOptions} from '../options'
+import type {ResolvedPluginOptions} from '../options'
 import type {ResolvedDocumentConfig} from '../resolve-documents'
 import {useAccess} from '../transport/use-access'
 import {AccessState} from './AccessState'
@@ -11,7 +11,7 @@ import {RunView} from './RunView'
 import {toPublishedId} from './studio-context'
 
 export interface ResonanceInspectorProps extends DocumentInspectorProps {
-  options: ResonancePluginOptions
+  options: ResolvedPluginOptions
   /** The resolved settings for this document's type. */
   config: ResolvedDocumentConfig
 }
@@ -54,7 +54,6 @@ export function ResonanceInspector({
       <Card flex={1} overflow="auto" padding={4}>
         {access.status === 'ready' ? (
           <RunView
-            accountLabel={access.accountLabel}
             accountUid={access.accountUid}
             config={config}
             documentType={documentType}
@@ -64,7 +63,7 @@ export function ResonanceInspector({
             publishedDocumentId={publishedDocumentId}
           />
         ) : (
-          <AccessState onRetry={retry} options={options} state={access} />
+          <AccessState apiUrl={options.apiUrl} onRetry={retry} state={access} />
         )}
       </Card>
     </Flex>

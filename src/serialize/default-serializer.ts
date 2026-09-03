@@ -1,4 +1,8 @@
-import {portableTextToMarkdown} from '@portabletext/markdown'
+import {
+  DefaultLinkRenderer,
+  type PortableTextMarkRendererOptions,
+  portableTextToMarkdown,
+} from '@portabletext/markdown'
 import type {SanityDocument} from 'sanity'
 
 import {MAX_CONTENT_BYTES, MAX_TITLE_LENGTH, type SerializedContent} from '../options'
@@ -117,25 +121,209 @@ function isSkipped(field: SerializableField): boolean {
   return field.type.hidden === true || SKIPPED_PREFIX.test(field.name)
 }
 
+/** Fields whose name says they carry the block's label. Checked first, in this order. */
+const LABEL_FIELDS = ['title', 'heading', 'name', 'label']
+
+/** Fields that hold machine data (links, ids, presentation) rather than words for a reader. */
+const TECHNICAL_FIELDS: ReadonlySet<string> = new Set([
+  'asset',
+  'href',
+  'url',
+  'link',
+  'to',
+  'reference',
+  'slug',
+  'id',
+  'key',
+  'language',
+  'variant',
+  'style',
+  'layout',
+  'align',
+  'alignment',
+  'size',
+  'width',
+  'height',
+  'color',
+  'tone',
+  'icon',
+  'mode',
+  'version',
+  'target',
+  'rel',
+  'hotspot',
+  'crop',
+])
+
+const LOOKS_LIKE_URL_OR_ID = /^(https?:\/\/|\/|[A-Za-z0-9_-]{20,}$)/
+
+/** Nested objects deeper than this are named, not read. */
+const MAX_DESCRIBE_DEPTH = 3
+
+function collapse(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+function isReadable(key: string, value: string): boolean {
+  if (key.startsWith('_') || TECHNICAL_FIELDS.has(key)) return false
+  const text = value.trim()
+  return text !== '' && !LOOKS_LIKE_URL_OR_ID.test(text)
+}
+
+function isPortableTextValue(value: unknown): value is unknown[] {
+  return Array.isArray(value) && value.some((item) => isRecord(item) && item._type === 'block')
+}
+
+function fence(value: Record<string, unknown>): string | null {
+  if (typeof value.code !== 'string' || value.code.trim() === '') return null
+  const language = typeof value.language === 'string' ? value.language.trim() : ''
+  const marker = value.code.includes('```') ? '````' : '```'
+  return `${marker}${language}\n${value.code}\n${marker}`
+}
+
+function cellText(cell: unknown): string {
+  if (typeof cell === 'string') return collapse(cell)
+  if (isPortableTextValue(cell)) return collapse(renderPortableText(cell))
+  if (isRecord(cell)) {
+    const inner = cell.value ?? cell.text ?? cell.content
+    if (typeof inner === 'string') return collapse(inner)
+    if (isPortableTextValue(inner)) return collapse(renderPortableText(inner))
+    return collapse(describe(cell, MAX_DESCRIBE_DEPTH).inline.join(' '))
+  }
+  return ''
+}
+
+/** Rows of cells as a GFM table; the first row is the header because GFM has no headerless form. */
+function table(rows: unknown[]): string | null {
+  const grid = rows
+    .filter(isRecord)
+    .map((row) => (Array.isArray(row.cells) ? row.cells.map(cellText) : []))
+    .map((cells) => cells.map((cell) => cell.replace(/\|/g, '\\|')))
+  const width = Math.max(0, ...grid.map((row) => row.length))
+  if (width === 0 || !grid.some((row) => row.some(Boolean))) return null
+
+  const line = (row: string[]) =>
+    `| ${[...row, ...Array<string>(width - row.length).fill('')].join(' | ')} |`
+  const [first, ...rest] = grid
+  return [line(first ?? []), `|${' --- |'.repeat(width)}`, ...rest.map(line)].join('\n')
+}
+
+function isTableRows(value: unknown): value is unknown[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((row) => isRecord(row) && Array.isArray(row.cells))
+  )
+}
+
+interface Description {
+  /** Short readable strings, in field order, for the `[type: …]` line. */
+  inline: string[]
+  /** Fenced code and tables, which need their own lines. */
+  blocks: string[]
+}
+
 /**
- * Text for a non-text block. Code keeps its fence, images become a short marker, and anything
- * else is named so the reader knows something was there. No asset URLs, no JSON.
+ * Reads the words out of an arbitrary object: its label fields first, then every string and
+ * Portable Text field in order, recursing into nested objects and arrays. Code becomes a fence,
+ * `rows`/`cells` become a table, images become a marker. Links, ids and presentation fields are
+ * skipped, so no asset URLs or JSON ever appear.
+ */
+function describe(value: Record<string, unknown>, depth: number): Description {
+  const out: Description = {inline: [], blocks: []}
+
+  if (value._type === 'image' || 'asset' in value) {
+    const alt = firstString(value.alt, value.caption, value.title)
+    out.inline.push(alt ? `[image: ${collapse(alt)}]` : '[image]')
+    return out
+  }
+
+  const codeBlock = fence(value)
+  if (codeBlock) {
+    const label = firstString(value.filename, value.title, value.label)
+    if (label) out.inline.push(collapse(label))
+    out.blocks.push(codeBlock)
+    return out
+  }
+
+  for (const key of LABEL_FIELDS) {
+    const label = value[key]
+    if (typeof label === 'string' && isReadable(key, label)) {
+      out.inline.push(collapse(label))
+      break
+    }
+  }
+
+  for (const [key, field] of Object.entries(value)) {
+    if (LABEL_FIELDS.includes(key) || key.startsWith('_') || TECHNICAL_FIELDS.has(key)) continue
+
+    if (typeof field === 'string') {
+      if (isReadable(key, field)) out.inline.push(collapse(field))
+      continue
+    }
+
+    if (isPortableTextValue(field)) {
+      const text = renderPortableText(field)
+      if (text) out.inline.push(collapse(text))
+      continue
+    }
+
+    if (isTableRows(field)) {
+      const rendered = table(field)
+      if (rendered) out.blocks.push(rendered)
+      continue
+    }
+
+    if (depth >= MAX_DESCRIBE_DEPTH) continue
+
+    if (Array.isArray(field)) {
+      for (const item of field) {
+        if (typeof item === 'string') {
+          if (isReadable(key, item)) out.inline.push(collapse(item))
+        } else if (isRecord(item)) {
+          const nested = describe(item, depth + 1)
+          out.inline.push(...nested.inline)
+          out.blocks.push(...nested.blocks)
+        }
+      }
+      continue
+    }
+
+    if (isRecord(field)) {
+      const nested = describe(field, depth + 1)
+      out.inline.push(...nested.inline)
+      out.blocks.push(...nested.blocks)
+    }
+  }
+
+  return out
+}
+
+/**
+ * Text for a non-text block: a `[type: what it says]` line built from the block's readable
+ * fields, followed by any code or tables it carries. A block with nothing readable is still named
+ * so the reader knows something was there.
  */
 function describeObject({value}: {value: unknown}): string {
   if (!isRecord(value)) return ''
   const type = typeof value._type === 'string' && value._type !== '' ? value._type : 'object'
+  const {inline, blocks} = describe(value, 0)
 
-  if (typeof value.code === 'string') {
-    const language = typeof value.language === 'string' ? value.language.trim() : ''
-    return `\`\`\`${language}\n${value.code}\n\`\`\``
-  }
+  if (value._type === 'image' || 'asset' in value) return inline.join(' ')
+  if (type === 'code' && blocks.length > 0 && inline.length === 0) return blocks.join('\n\n')
 
-  if (type === 'image' || 'asset' in value) {
-    return `[image: ${firstString(value.alt, value.caption) ?? ''}]`
-  }
+  const line = inline.length > 0 ? `[${type}: ${inline.join(' — ')}]` : `[${type}]`
+  return blocks.length > 0 ? [line, ...blocks].join('\n\n') : line
+}
 
-  const label = firstString(value.title, value.text, value.heading)
-  return label ? `[${type}: ${label}]` : `[${type}]`
+/**
+ * `link` annotations carry `href` in most schemas and `url` in some; either way the audiences get
+ * a markdown link, and a link with neither renders as its text.
+ */
+function renderLink(options: PortableTextMarkRendererOptions): string {
+  const href = firstString(options.value?.href, options.value?.url)
+  if (!href) return options.children
+  return DefaultLinkRenderer({...options, value: {_type: 'link', href, title: undefined}})
 }
 
 function renderPortableText(value: unknown): string {
@@ -147,6 +335,9 @@ function renderPortableText(value: unknown): string {
   if (blocks.length === 0) return ''
 
   return portableTextToMarkdown(blocks, {
+    marks: {link: renderLink},
+    // The library has its own renderers for these; they print JSON when the shape differs from
+    // what they expect, so every object type goes through the same describer.
     types: {
       image: describeObject,
       code: describeObject,

@@ -2,21 +2,16 @@ import {useCurrentUser, useDataset, useProjectId} from 'sanity'
 
 export interface StudioContext {
   email: string | null
-  origin: string
   projectId: string
   dataset: string
 }
 
-export function currentOrigin(): string {
-  return typeof window === 'undefined' ? 'this Studio' : window.location.origin
-}
-
-/** The bits of Studio identity that show up in access copy and the access-request message. */
+/** The bits of Studio identity the panel copy and storage keys use. */
 export function useStudioContext(): StudioContext {
   const user = useCurrentUser()
   const projectId = useProjectId()
   const dataset = useDataset()
-  return {email: user?.email ?? null, origin: currentOrigin(), projectId, dataset}
+  return {email: user?.email ?? null, projectId, dataset}
 }
 
 /** `drafts.x` and `versions.<release>.x` both belong to the same published document `x`. */

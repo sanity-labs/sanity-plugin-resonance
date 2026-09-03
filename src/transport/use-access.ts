@@ -1,9 +1,9 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
 
-import type {ResonancePluginOptions} from '../options'
+import type {ResolvedPluginOptions} from '../options'
 import {createResonanceFetch, type ResonanceApiError, type ResonanceFetch} from './resonance-fetch'
 import {useOrganizationId} from './use-organization-id'
-import {type ResonanceAccount, useResonanceAccount} from './use-resonance-account'
+import {useResonanceAccount} from './use-resonance-account'
 import {useSanityToken} from './use-sanity-token'
 
 export type AccessState =
@@ -12,7 +12,6 @@ export type AccessState =
   | {status: 'unreachable'; error: ResonanceApiError}
   | {status: 'unauthorized'; error: ResonanceApiError}
   | {status: 'no-grant'}
-  | {status: 'choose-account'; accounts: ResonanceAccount[]; choose: (uid: string) => void}
   | {status: 'error'; error: Error}
   | {status: 'ready'; accountUid: string; accountLabel?: string; fetch: ResonanceFetch}
 
@@ -38,11 +37,11 @@ export interface UseAccessResult {
 }
 
 /**
- * Resolves access in order: Sanity token, organization id, then account discovery against
- * Resonance. The transport reads the token and organization id through refs so the same
- * instance stays valid across re-renders and picks up a refreshed token.
+ * Resolves access in order: Sanity token, organization id, then confirms with Resonance that the
+ * editor is granted the configured account. The transport reads the token and organization id
+ * through refs so the same instance stays valid across re-renders and picks up a refreshed token.
  */
-export function useAccess(options: ResonancePluginOptions): UseAccessResult {
+export function useAccess(options: ResolvedPluginOptions): UseAccessResult {
   const [retryKey, setRetryKey] = useState(0)
   const retry = useCallback(() => setRetryKey((key) => key + 1), [])
 
@@ -103,12 +102,6 @@ export function useAccess(options: ResonancePluginOptions): UseAccessResult {
         return {status: 'unreachable', error: accountState.error}
       case 'error':
         return {status: 'error', error: accountState.error}
-      case 'choose':
-        return {
-          status: 'choose-account',
-          accounts: accountState.accounts,
-          choose: accountState.choose,
-        }
       case 'ready':
         return {
           status: 'ready',

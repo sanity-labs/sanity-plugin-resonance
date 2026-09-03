@@ -1,7 +1,7 @@
 import type {ObjectSchemaType} from 'sanity'
 import {describe, expect, it, vi} from 'vitest'
 
-import type {ResonanceDocumentContext, ResonanceQuestionContext} from '../options'
+import type {ResonanceDocumentContext} from '../options'
 import {resolveDocuments, type ResolvedDocumentConfig} from '../resolve-documents'
 import {composeRequest, defaultQuestion} from './compose'
 
@@ -126,12 +126,6 @@ describe('composeRequest', () => {
     expect(
       composeRequest({config: config({url: boom}), ctx: context(), compareEnabled: true}),
     ).toEqual({status: 'failed', message: 'url() failed: nope'})
-    expect(
-      composeRequest({config: config({compare: boom}), ctx: context(), compareEnabled: true}),
-    ).toEqual({status: 'failed', message: 'compare() failed: nope'})
-    expect(
-      composeRequest({config: config({question: boom}), ctx: context(), compareEnabled: true}),
-    ).toEqual({status: 'failed', message: 'question() failed: nope'})
   })
 
   it('compares a draft with the published version by default, and the toggle can turn it off', () => {
@@ -171,23 +165,6 @@ describe('composeRequest', () => {
     const [, publishedCtx] = serialize.mock.calls[1]
     expect(publishedCtx.variant).toBe('published')
     expect(publishedCtx.document).toEqual({_id: 'a', _type: 'post', body: 'old text'})
-  })
-
-  it('lets a compare function supply the earlier version, or decline', () => {
-    const custom = ready({
-      config: config({compare: () => 'previous edition'}),
-      ctx: context({variant: 'published', published: null}),
-      compareEnabled: true,
-    })
-    expect(custom.compareTo).toBe('previous edition')
-    expect(custom.comparing).toBe(true)
-
-    const declined = ready({
-      config: config({compare: () => null}),
-      ctx: context(),
-      compareEnabled: true,
-    })
-    expect(declined.canCompare).toBe(false)
   })
 
   it('frames with channel, url, and source and mentions the live page when comparing', () => {
@@ -238,29 +215,6 @@ describe('composeRequest', () => {
       compareEnabled: true,
     })
     expect(request.question).toBe('Would you forward this?')
-  })
-
-  it('hands a question function the resolved framing', () => {
-    const question = vi.fn(
-      (ctx: ResonanceQuestionContext) =>
-        `${ctx.channel}|${ctx.url}|${ctx.source}|${ctx.comparing}|${ctx.variant}`,
-    )
-    const request = ready({
-      config: config({
-        question,
-        channel: 'the docs',
-        url: () => 'https://www.sanity.io/docs/x',
-        source: 'Sanity',
-      }),
-      ctx: context(),
-      compareEnabled: true,
-    })
-    expect(request.question).toBe('the docs|https://www.sanity.io/docs/x|Sanity|true|draft')
-    const [ctx] = question.mock.calls[0]
-    expect(ctx.document).toEqual(context().document)
-    expect(ctx.published).toEqual(context().published)
-    expect(ctx.projectId).toBe('p')
-    expect(ctx.dataset).toBe('production')
   })
 
   it('sends audiences as personas and folds them into the key', () => {

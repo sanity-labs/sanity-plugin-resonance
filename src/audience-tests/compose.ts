@@ -1,9 +1,4 @@
-import {
-  MAX_TITLE_LENGTH,
-  type ResonanceDocumentContext,
-  type ResonanceQuestionContext,
-  type SerializedContent,
-} from '../options'
+import {MAX_TITLE_LENGTH, type ResonanceDocumentContext, type SerializedContent} from '../options'
 import type {ResolvedDocumentConfig} from '../resolve-documents'
 
 /** The three framing values the prompt is built from, after resolution. */
@@ -77,11 +72,6 @@ export function resolveCompareCandidate(
   content: string,
 ): string | null {
   if (config.compare === 'none') return null
-
-  if (typeof config.compare === 'function') {
-    return nonEmpty(config.compare(ctx))
-  }
-
   if (ctx.variant === 'published' || !ctx.published) return null
   const earlier = config.serialize(ctx.published, {
     ...ctx,
@@ -126,11 +116,9 @@ export function defaultQuestion({
 /** The host's `question` when configured, otherwise {@link defaultQuestion}. */
 export function composeQuestion(
   config: ResolvedDocumentConfig,
-  ctx: ResonanceQuestionContext,
+  framing: Framing & {comparing: boolean},
 ): string | undefined {
-  if (typeof config.question === 'string') return config.question
-  if (typeof config.question === 'function') return config.question(ctx)
-  return defaultQuestion(ctx)
+  return config.question ?? defaultQuestion(framing)
 }
 
 function failure(step: string, error: unknown): Composition {
@@ -161,7 +149,7 @@ export function composeRequest({
   try {
     candidate = resolveCompareCandidate(config, ctx, content)
   } catch (error) {
-    return failure('compare()', error)
+    return failure('serialize() on the published version', error)
   }
   const comparing = compareEnabled && candidate !== null
 
@@ -174,12 +162,7 @@ export function composeRequest({
 
   const framing: Framing = {channel: config.channel, url, source: config.source}
 
-  let question: string | undefined
-  try {
-    question = nonEmpty(composeQuestion(config, {...ctx, ...framing, comparing})) ?? undefined
-  } catch (error) {
-    return failure('question()', error)
-  }
+  const question = nonEmpty(composeQuestion(config, {...framing, comparing})) ?? undefined
 
   const chosen = audiences ?? config.audiences
   const personas = chosen && chosen.length > 0 ? chosen : undefined
