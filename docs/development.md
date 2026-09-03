@@ -60,9 +60,9 @@ pnpm install        # or npm/yarn; creates the node_modules symlink
 ```
 
 Then configure the plugin in the Studio's `sanity.config.ts` and run `sanity dev`. Point
-`apiUrl` at a Resonance that has been set up to accept `http://localhost:3333` (see
-[auth.md](auth.md)). Undo with `npx yalc remove @sanity-labs/sanity-plugin-resonance` and a
-reinstall; never commit the `link:` line yalc writes into the Studio's `package.json`.
+`apiUrl` at the Resonance you want to talk to (see [auth.md](auth.md)). Undo with
+`npx yalc remove @sanity-labs/sanity-plugin-resonance` and a reinstall; never commit the
+`link:` line yalc writes into the Studio's `package.json`.
 
 Two things to know:
 

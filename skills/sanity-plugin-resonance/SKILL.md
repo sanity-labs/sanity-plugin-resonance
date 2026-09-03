@@ -1,6 +1,6 @@
 ---
 name: sanity-plugin-resonance
-description: Install and configure @sanity-labs/sanity-plugin-resonance, the Sanity Studio plugin that lets editors run Resonance audience tests on a document from a side panel. Use this whenever someone wants to add Resonance, audience tests, simulated audiences, persona feedback, or "ask our audiences" to a Sanity Studio; wants the Resonance button on more document types; wants audiences told where content lives or who publishes it; is wiring compare-with-published, custom serializers, or a custom prompt; or is debugging a panel state such as "Resonance hasn't allowed this Studio yet" or "You're not in Resonance yet". DO NOT load this for Resonance's own web app, API, or MCP outside a Studio, for Sanity AI Assist, Comments, or other unrelated Studio plugins, or for general Sanity plugin development.
+description: Install and configure @sanity-labs/sanity-plugin-resonance, the Sanity Studio plugin that lets editors run Resonance audience tests on a document from a side panel. Use this whenever someone wants to add Resonance, audience tests, simulated audiences, persona feedback, or "ask our audiences" to a Sanity Studio; wants the Resonance button on more document types; wants audiences told where content lives or who publishes it; is wiring compare-with-published, custom serializers, or a custom prompt; or is debugging a panel state such as "Couldn't reach Resonance" or "You're not in Resonance yet". DO NOT load this for Resonance's own web app, API, or MCP outside a Studio, for Sanity AI Assist, Comments, or other unrelated Studio plugins, or for general Sanity plugin development.
 ---
 
 # sanity-plugin-resonance
@@ -128,14 +128,14 @@ The panel shows one of these instead of the run card when something is missing. 
 concrete owner; tell the user who needs to act. There are no server settings to change from the
 Studio side.
 
-| Panel says                                     | Cause                                                                | Fix                                                                                                                              |
-| ---------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Sign in again to use Resonance.                | The Studio session has no token to forward.                          | Editor signs out and back in. If it persists and `sanity < 5.30`, set `auth: {loginMethod: 'token'}`.                            |
-| Resonance hasn't allowed this Studio yet.      | This Studio's origin is not yet allowed by the Resonance deployment. | The user's Resonance contact allows the exact origin the panel shows (hosted and `http://localhost:3333` are different origins). |
-| Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                      | Editor signs out and in; if it persists, the user's Resonance contact.                                                           |
-| You're not in Resonance yet.                   | The editor's email has no access to a Resonance account.             | The user's Resonance contact grants the email. The panel's button copies a ready message.                                        |
-| Which Resonance account?                       | Email has access to several accounts, no `accountUid` configured.    | Pick one, or set `accountUid`.                                                                                                   |
-| This account has no audiences yet.             | The Resonance account has no audiences defined.                      | Define audiences in Resonance.                                                                                                   |
+| Panel says                                     | Cause                                                                     | Fix                                                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Sign in again to use Resonance.                | The Studio session has no token to forward.                               | Editor signs out and back in. If it persists and `sanity < 5.30`, set `auth: {loginMethod: 'token'}`.    |
+| Couldn't reach Resonance.                      | The request got no response (Resonance down, wrong `apiUrl`, or network). | The editor retries; if it persists, the Studio owner checks `apiUrl`, then the user's Resonance contact. |
+| Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                           | Editor signs out and in; if it persists, the user's Resonance contact.                                   |
+| You're not in Resonance yet.                   | The editor's email has no access to a Resonance account.                  | The user's Resonance contact grants the email. The panel's button copies a ready message.                |
+| Which Resonance account?                       | Email has access to several accounts, no `accountUid` configured.         | Pick one, or set `accountUid`.                                                                           |
+| This account has no audiences yet.             | The Resonance account has no audiences defined.                           | Define audiences in Resonance.                                                                           |
 
 `docs/auth.md` in the repo explains the model. The plugin never holds a Resonance credential; it
 forwards the editor's own Sanity session, which Resonance verifies and then authorises by email.

@@ -34,9 +34,7 @@ re-checked on every request, so removing someone takes effect immediately.
 settings for it)
 
 1. Your Resonance deployment must be set up to accept Sanity Studio sessions.
-2. Each Studio origin that should run tests must be allowed, exactly, including local
-   development (`http://localhost:3333` is a different origin from your hosted Studio).
-3. Each editor's email must be granted access to the Resonance account you want tests to land
+2. Each editor's email must be granted access to the Resonance account you want tests to land
    in.
 
 The panel reports which of these is missing, in editor terms, and gives the editor something to
@@ -44,16 +42,15 @@ send.
 
 ## What editors see
 
-| Panel state                                    | What it means                                                                  | Who fixes it                                                                                                                                                 |
-| ---------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Sign in again to use Resonance.                | This Studio session has no token to forward.                                   | The editor: sign out and back in. If it persists on an old Studio, the Studio owner sets `loginMethod: 'token'`.                                             |
-| Resonance hasn't allowed this Studio yet.      | The request was blocked before a response arrived; this origin is not allowed. | Your Resonance contact, with the origin the panel shows (there is a Copy button).                                                                            |
-| Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                                | The editor signs out and in; if it persists, your Resonance contact.                                                                                         |
-| You're not in Resonance yet.                   | The session is valid but this email has no access to a Resonance account.      | Your Resonance contact. **Ask for access** opens `requestAccess.href` or copies a ready message with the editor's email, Studio origin, project and dataset. |
-| Which Resonance account?                       | The email has access to several accounts and `accountUid` is not set.          | The editor picks one (remembered), or the Studio owner sets `accountUid`.                                                                                    |
+| Panel state                                    | What it means                                                                                          | Who fixes it                                                                                                                                                 |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Sign in again to use Resonance.                | This Studio session has no token to forward.                                                           | The editor: sign out and back in. If it persists on an old Studio, the Studio owner sets `loginMethod: 'token'`.                                             |
+| Couldn't reach Resonance.                      | The request got no response (Resonance is down, the `apiUrl` is wrong, or the network is blocking it). | The editor retries; if it persists, the Studio owner checks `apiUrl`, then the Resonance contact.                                                            |
+| Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                                                        | The editor signs out and in; if it persists, your Resonance contact.                                                                                         |
+| You're not in Resonance yet.                   | The session is valid but this email has no access to a Resonance account.                              | Your Resonance contact. **Ask for access** opens `requestAccess.href` or copies a ready message with the editor's email, Studio origin, project and dataset. |
+| Which Resonance account?                       | The email has access to several accounts and `accountUid` is not set.                                  | The editor picks one (remembered), or the Studio owner sets `accountUid`.                                                                                    |
 
 ## Local development
 
-A Studio on `http://localhost:3333` is an origin like any other and must be allowed on the
-Resonance it talks to. Point `apiUrl` at that Resonance and nothing else changes. Plain `http`
-is accepted for `localhost` and `127.0.0.1` only; every other `apiUrl` must be `https`.
+Point `apiUrl` at the Resonance you want to talk to. Plain `http` is accepted for `localhost`
+and `127.0.0.1` only; every other `apiUrl` must be `https`.

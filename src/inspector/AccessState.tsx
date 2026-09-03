@@ -88,10 +88,6 @@ export function AccessState({state, options, onRetry, accountUid, accountLabel}:
     void auth.logout?.()
   }, [auth])
 
-  const copyOrigin = useCallback(() => {
-    void copy(studio.origin)
-  }, [copy, studio.origin])
-
   const copyAccessRequest = useCallback(() => {
     void copy(
       requestAccessMessage({
@@ -135,18 +131,9 @@ export function AccessState({state, options, onRetry, accountUid, accountLabel}:
         <Frame
           icon={PlugIcon}
           heading={accessCopy.unreachable.heading}
-          body={accessCopy.unreachable.body(studio.origin)}
+          body={accessCopy.unreachable.body}
           footnote={state.error.message}
-          actions={
-            <>
-              <Button
-                mode="ghost"
-                onClick={copyOrigin}
-                text={copyLabel(accessCopy.unreachable.copyOrigin, accessCopy.unreachable.copied)}
-              />
-              <Button mode="ghost" onClick={onRetry} text={accessCopy.unreachable.retry} />
-            </>
-          }
+          actions={<Button mode="ghost" onClick={onRetry} text={accessCopy.unreachable.retry} />}
         />
       )
 

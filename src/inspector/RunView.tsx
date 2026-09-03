@@ -36,7 +36,7 @@ import {AccessState} from './AccessState'
 import {AudienceTestResults} from './AudienceTestResults'
 import {ErrorCard} from './ErrorCard'
 import {RunCard} from './RunCard'
-import {currentOrigin, useStudioContext} from './studio-context'
+import {useStudioContext} from './studio-context'
 
 export interface RunViewProps {
   options: ResonancePluginOptions
@@ -267,7 +267,7 @@ export function RunView({
           message={state.error.message}
           detail={
             state.error.kind === 'network'
-              ? `Requests from ${currentOrigin()} may be blocked, or Resonance is unreachable.`
+              ? "Resonance couldn't be reached. Try again."
               : state.error.status
                 ? `HTTP ${state.error.status}`
                 : undefined
