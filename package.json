@@ -39,6 +39,7 @@
   "scripts": {
     "build": "plugin-kit verify-package --silent && pkg-utils build --strict --check --clean",
     "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "link-watch": "plugin-kit link-watch",
     "lint": "oxlint",
     "prepublishOnly": "npm run build",
@@ -52,6 +53,7 @@
     "@sanity/ui": "^4.0.7"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.1",
     "@sanity/pkg-utils": "^12.3.4",
     "@sanity/plugin-kit": "^10.0.9",
     "@types/react": "^19.2.18",

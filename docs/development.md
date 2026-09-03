@@ -93,6 +93,14 @@ Two things to know:
 
 ## Releasing
 
-Not yet. The package is pre-alpha and unpublished; the README says so at the top. When it is
-time: `pnpm build` is run by `prepublishOnly`, `files` is `dist` only, and the peer range is
+Versioning uses [Changesets](https://github.com/changesets/changesets); publishing happens from
+GitHub Actions via npm [trusted publishing](https://docs.npmjs.com/trusted-publishers).
+
+1. In your PR, run `pnpm changeset` and pick `patch`/`minor`/`major` with a one-line summary.
+   Commit the generated `.changeset/*.md` file with your change.
+2. Merge to `main`. `release.yml` opens (or updates) a **Version Packages** PR that bumps
+   `package.json` and `CHANGELOG.md`.
+3. Merge the Version Packages PR. `release.yml` runs again and publishes to npm.
+
+`pnpm build` is run by `prepublishOnly`, `files` is `dist` only, and the peer range is
 `sanity ^5.30.0 || ^6.0.0-0`.
