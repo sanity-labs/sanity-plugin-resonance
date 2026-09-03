@@ -4,7 +4,7 @@ import {LockIcon} from '@sanity/icons/Lock'
 import {PlugIcon} from '@sanity/icons/Plug'
 import {UserIcon} from '@sanity/icons/User'
 import {UsersIcon} from '@sanity/icons/Users'
-import {Button, Card, Flex, Heading, Inline, Select, Spinner, Stack, Text} from '@sanity/ui'
+import {Button, Card, Flex, Heading, Inline, Spinner, Stack, Text} from '@sanity/ui'
 import {type ComponentType, type ReactNode, useCallback} from 'react'
 import {useWorkspace} from 'sanity'
 
@@ -186,34 +186,6 @@ export function AccessState({state, options, onRetry, accountUid, accountLabel}:
               )}
               <Button mode="ghost" onClick={onRetry} text={accessCopy.noGrant.checkAgain} />
             </>
-          }
-        />
-      )
-
-    case 'choose-account':
-      return (
-        <Frame
-          icon={UsersIcon}
-          heading={accessCopy.chooseAccount.heading}
-          body={accessCopy.chooseAccount.body}
-          actions={
-            <Select
-              defaultValue=""
-              fontSize={1}
-              onChange={(event) => {
-                if (event.currentTarget.value) state.choose(event.currentTarget.value)
-              }}
-              padding={3}
-            >
-              <option disabled value="">
-                {accessCopy.chooseAccount.placeholder}
-              </option>
-              {state.accounts.map((account) => (
-                <option key={account.uid} value={account.uid}>
-                  {account.label || account.uid}
-                </option>
-              ))}
-            </Select>
           }
         />
       )

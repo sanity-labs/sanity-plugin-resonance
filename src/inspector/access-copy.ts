@@ -51,11 +51,6 @@ export const accessCopy = {
     copied: 'Copied',
     checkAgain: 'Check again',
   },
-  chooseAccount: {
-    heading: 'Which Resonance account?',
-    body: 'Your Sanity user is granted more than one account. Pick the one this Studio should test against.',
-    placeholder: 'Choose an account',
-  },
   noPersonas: {
     heading: 'This account has no audiences yet.',
     body: 'Resonance needs at least one audience defined before it can review content.',

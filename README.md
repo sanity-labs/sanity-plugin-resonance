@@ -43,6 +43,7 @@ export default defineConfig({
   plugins: [
     resonance({
       apiUrl: 'https://resonance.cx',
+      accountUid: '<your Resonance account uid>',
       documents: ['post', 'article'],
     }),
   ],
@@ -58,9 +59,10 @@ That is the whole default setup. Editors get:
 - Comparison with the published version whenever they test a draft of something that is live.
 - Every audience on the Resonance account, and Resonance's own neutral prompt.
 
-Before anyone can run a test, Resonance must accept Sanity Studio sessions, and each editor's
-email must have access to a Resonance account. Your Resonance contact sets that up; the panel
-tells editors when access is missing and gives them something to send.
+`accountUid` is the Resonance account the Studio tests against; your Resonance contact gives you
+it. Before anyone can run a test, Resonance must accept Sanity Studio sessions, and each editor's
+email must have access to that account. Your Resonance contact sets that up too; the panel tells
+editors when access is missing and gives them something to send.
 [docs/auth.md](docs/auth.md) has the details. The Studio itself needs `sanity` 5.30 or newer.
 
 ## Make it better
@@ -77,6 +79,7 @@ import {defineResonanceDocument, resonance} from '@sanity-labs/sanity-plugin-res
 
 resonance({
   apiUrl: 'https://resonance.cx',
+  accountUid: '<your Resonance account uid>',
   documents: [
     defineResonanceDocument({
       type: 'post',
@@ -99,6 +102,7 @@ Return `null` from `url` while the slug is empty.
 ```ts
 resonance({
   apiUrl: 'https://resonance.cx',
+  accountUid: '<your Resonance account uid>',
   defaults: {
     source: 'Sanity, the company that makes the product being discussed',
   },
@@ -194,6 +198,7 @@ export default defineConfig({
   plugins: [
     resonance({
       apiUrl: 'https://resonance.cx',
+      accountUid: '<your Resonance account uid>',
       defaults: {
         source: 'Sanity, the company that makes the product being discussed',
       },
@@ -257,7 +262,6 @@ If something is not set up yet, the panel shows a short explanation instead of t
 | Couldn't reach Resonance.                      | The request got no response (Resonance is down, the `apiUrl` is wrong, or the network is blocking it). | Retry. If it persists, check `apiUrl`, then your Resonance contact.        |
 | Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                                                        | Sign out and in; if it persists, tell your Resonance contact.              |
 | You're not in Resonance yet.                   | Your email has not been granted a Resonance account.                                                   | **Ask for access** opens your configured link or copies a message to send. |
-| Which Resonance account?                       | You have access to more than one.                                                                      | Pick one; it is remembered.                                                |
 | This account has no audiences yet.             | Resonance has no audiences defined for this account.                                                   | Define them in Resonance first.                                            |
 
 ## Docs

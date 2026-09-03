@@ -7,6 +7,7 @@ import {defaultSerialize} from './serialize/default-serializer'
 
 const valid: ResonancePluginOptions = {
   apiUrl: 'https://resonance.example',
+  accountUid: 'acc_123',
   documents: ['post'],
 }
 
@@ -45,6 +46,16 @@ describe('validateOptions', () => {
     expect(() => validateOptions({...valid, apiUrl: 'http://resonance.example'})).toThrow(/https/)
     expect(() => validateOptions({...valid, apiUrl: 'not a url'})).toThrow(/valid URL/)
     expect(() => validateOptions({...valid, apiUrl: ''})).toThrow(/non-empty/)
+  })
+
+  it('requires the Resonance account uid', () => {
+    const {accountUid: _omitted, ...withoutAccount} = valid
+    expect(() => validateOptions(loose(withoutAccount))).toThrow(/`accountUid` is required/)
+    expect(() => validateOptions({...valid, accountUid: ''})).toThrow(/`accountUid` is required/)
+    expect(() => validateOptions({...valid, accountUid: '   '})).toThrow(/`accountUid` is required/)
+    expect(() => validateOptions(loose({...valid, accountUid: 42}))).toThrow(
+      /`accountUid` is required/,
+    )
   })
 
   it('requires a non-empty documents array of names or {type} objects', () => {

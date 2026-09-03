@@ -144,8 +144,11 @@ export interface ResonancePluginOptions {
   documents: Array<string | ResonanceDocumentConfig>
   /** Plugin-wide defaults; any per-document setting overrides these. */
   defaults?: ResonanceDefaults
-  /** Skip account discovery when the Studio maps to one Resonance account. */
-  accountUid?: string
+  /**
+   * The Resonance account this Studio tests against. The panel checks the signed-in editor is
+   * granted this account before it offers a run.
+   */
+  accountUid: string
   /** Skip the `/projects/{projectId}` lookup. */
   organizationId?: string
   /** Panel and button label. Defaults to "Resonance". */
@@ -264,7 +267,9 @@ function validateDocument(entry: unknown, index: number): string {
 /** Runs at `definePlugin` time; accepts a loose shape so JavaScript hosts get the same messages. */
 export function validateOptions(options: Partial<ResonancePluginOptions> | undefined): void {
   if (!options || typeof options !== 'object') {
-    throw new Error('resonance: plugin options are required, e.g. resonance({apiUrl, documents}).')
+    throw new Error(
+      'resonance: plugin options are required, e.g. resonance({apiUrl, accountUid, documents}).',
+    )
   }
 
   validateApiUrl(options.apiUrl)
@@ -288,8 +293,10 @@ export function validateOptions(options: Partial<ResonancePluginOptions> | undef
 
   validateDefaults(options.defaults)
 
-  if (options.accountUid !== undefined && typeof options.accountUid !== 'string') {
-    throw new Error('resonance: `accountUid` must be a string when provided.')
+  if (!isNonEmptyString(options.accountUid) || options.accountUid.trim() === '') {
+    throw new Error(
+      'resonance: `accountUid` is required: the uid of the Resonance account this Studio tests against.',
+    )
   }
 
   if (options.organizationId !== undefined && typeof options.organizationId !== 'string') {

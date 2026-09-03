@@ -44,6 +44,7 @@ import {resonance} from '@sanity-labs/sanity-plugin-resonance'
 plugins: [
   resonance({
     apiUrl: 'https://resonance.cx',
+    accountUid: '<the Resonance account uid>',
     documents: ['post', 'article'],
   }),
 ]
@@ -51,7 +52,9 @@ plugins: [
 
 Keep `apiUrl` as a plain string unless the host already reads config from environment variables,
 in which case follow the host's pattern (Studio env vars are `SANITY_STUDIO_*` and are public).
-If the user has a Resonance account uid, pass `accountUid` so the panel skips account discovery.
+`accountUid` is required: the uid of the Resonance account the Studio tests against. Ask the user
+for it, or the user's Resonance contact. The panel checks each editor is granted that account
+before it offers a run.
 
 ## 3. Configure it well
 
@@ -102,6 +105,7 @@ const article = defineResonanceDocument({
 
 resonance({
   apiUrl: 'https://resonance.cx',
+  accountUid: '<the Resonance account uid>',
   defaults: {source: 'Acme, the company that makes the product being discussed'},
   documents: [post, article],
 })
@@ -134,7 +138,6 @@ Studio side.
 | Couldn't reach Resonance.                      | The request got no response (Resonance down, wrong `apiUrl`, or network). | The editor retries; if it persists, the Studio owner checks `apiUrl`, then the user's Resonance contact. |
 | Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                           | Editor signs out and in; if it persists, the user's Resonance contact.                                   |
 | You're not in Resonance yet.                   | The editor's email has no access to a Resonance account.                  | The user's Resonance contact grants the email. The panel's button copies a ready message.                |
-| Which Resonance account?                       | Email has access to several accounts, no `accountUid` configured.         | Pick one, or set `accountUid`.                                                                           |
 | This account has no audiences yet.             | The Resonance account has no audiences defined.                           | Define audiences in Resonance.                                                                           |
 
 `docs/auth.md` in the repo explains the model. The plugin never holds a Resonance credential; it

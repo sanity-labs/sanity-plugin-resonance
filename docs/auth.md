@@ -29,6 +29,8 @@ re-checked on every request, so removing someone takes effect immediately.
   in. The panel tells them so.
 - The `organizationId` option is optional. Without it the plugin looks the organization up once
   from the project.
+- `accountUid` is required. The panel confirms with Resonance that the signed-in editor is granted
+  that account before it offers a run; editors are never asked to pick an account.
 
 **On the Resonance side** (whoever runs your Resonance account does this; the plugin has no
 settings for it)
@@ -47,8 +49,7 @@ send.
 | Sign in again to use Resonance.                | This Studio session has no token to forward.                                                           | The editor: sign out and back in. If it persists on an old Studio, the Studio owner sets `loginMethod: 'token'`.                                             |
 | Couldn't reach Resonance.                      | The request got no response (Resonance is down, the `apiUrl` is wrong, or the network is blocking it). | The editor retries; if it persists, the Studio owner checks `apiUrl`, then the Resonance contact.                                                            |
 | Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                                                        | The editor signs out and in; if it persists, your Resonance contact.                                                                                         |
-| You're not in Resonance yet.                   | The session is valid but this email has no access to a Resonance account.                              | Your Resonance contact. **Ask for access** opens `requestAccess.href` or copies a ready message with the editor's email, Studio origin, project and dataset. |
-| Which Resonance account?                       | The email has access to several accounts and `accountUid` is not set.                                  | The editor picks one (remembered), or the Studio owner sets `accountUid`.                                                                                    |
+| You're not in Resonance yet.                   | The session is valid but this email has no access to the configured Resonance account.                 | Your Resonance contact. **Ask for access** opens `requestAccess.href` or copies a ready message with the editor's email, Studio origin, project and dataset. |
 
 ## Local development
 

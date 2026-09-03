@@ -10,7 +10,7 @@ guided version of this; come here when you need the exact shape.
 | `apiUrl`         | `string`                                   | Resonance base URL. `https:` required; `http:` is accepted only for `localhost` and `127.0.0.1`. Invalid values throw when the Studio config is evaluated.  |
 | `documents`      | `Array<string \| ResonanceDocumentConfig>` | Required, non-empty, no type listed twice. A string is a type name with the defaults; an object configures one type (below).                                |
 | `defaults`       | `ResonanceDefaults?`                       | `{compare?, source?, question?, audiences?}` applied to every type. Per-type values override these; built-ins fill the rest.                                |
-| `accountUid`     | `string?`                                  | Use this Resonance account and skip discovery. Needed when the same email is granted several accounts and you want no picker.                               |
+| `accountUid`     | `string`                                   | Required. The Resonance account this Studio tests against. The panel confirms the editor is granted it before offering a run.                               |
 | `organizationId` | `string?`                                  | Skips the `/projects/{projectId}` lookup used to fill `X-Sanity-Organization-Id`.                                                                           |
 | `title`          | `string?`                                  | Panel and button label. Defaults to `Resonance`.                                                                                                            |
 | `requestAccess`  | `{label: string; href: string}?`           | Target of the "Ask for access" button. When omitted, the button copies a prewritten message (with the editor's email, Studio origin, project, and dataset). |
@@ -148,12 +148,11 @@ has changed since.
 
 All in `localStorage`, all best-effort:
 
-| Key                                                                  | Value                                                |
-| -------------------------------------------------------------------- | ---------------------------------------------------- |
-| `sanity-plugin-resonance:last:{projectId}:{dataset}:{documentId}`    | `{testId, accountUid, contentHash, createdAt}`       |
-| `sanity-plugin-resonance:compare:{projectId}:{dataset}:{documentId}` | the compare toggle                                   |
-| `sanity-plugin-resonance:audiences:{projectId}:{documentType}`       | the chosen audiences, or absent for "all"            |
-| `sanity-plugin-resonance:account:{projectId}`                        | the chosen account when an editor is granted several |
+| Key                                                                  | Value                                          |
+| -------------------------------------------------------------------- | ---------------------------------------------- |
+| `sanity-plugin-resonance:last:{projectId}:{dataset}:{documentId}`    | `{testId, accountUid, contentHash, createdAt}` |
+| `sanity-plugin-resonance:compare:{projectId}:{dataset}:{documentId}` | the compare toggle                             |
+| `sanity-plugin-resonance:audiences:{projectId}:{documentType}`       | the chosen audiences, or absent for "all"      |
 
 ## Exports
 

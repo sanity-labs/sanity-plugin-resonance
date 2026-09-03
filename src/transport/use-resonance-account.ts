@@ -1,7 +1,5 @@
-import {useCallback, useEffect, useState} from 'react'
-import {useProjectId} from 'sanity'
+import {useEffect, useState} from 'react'
 
-import {readStorage, writeStorage} from '../storage'
 import {ResonanceApiError, type ResonanceFetch} from './resonance-fetch'
 
 /**
@@ -23,7 +21,6 @@ interface AccountsResponse {
 export type ResonanceAccountState =
   | {status: 'loading'}
   | {status: 'ready'; accountUid: string; accountLabel?: string}
-  | {status: 'choose'; accounts: ResonanceAccount[]; choose: (uid: string) => void}
   | {status: 'no-grant'}
   | {status: 'unauthorized'; error: ResonanceApiError}
   | {status: 'unreachable'; error: ResonanceApiError}
@@ -32,22 +29,14 @@ export type ResonanceAccountState =
 export interface UseResonanceAccountOptions {
   /** `null` until the token and organization id are known. */
   fetch: ResonanceFetch | null
-  /** Skips discovery entirely. */
-  accountUid?: string
+  /** The account the Studio is configured for. */
+  accountUid: string
   retryKey?: number
 }
 
 interface Outcome {
   key: string
   state: ResonanceAccountState
-}
-
-function accountStorageKey(projectId: string): string {
-  return `sanity-plugin-resonance:account:${projectId}`
-}
-
-function isUid(value: unknown): value is string {
-  return typeof value === 'string' && value !== ''
 }
 
 function fromError(error: unknown): ResonanceAccountState {
@@ -63,41 +52,28 @@ function fromError(error: unknown): ResonanceAccountState {
 }
 
 /**
- * Resolves which Resonance account to run tests against: the configured `accountUid`, or the
- * accounts the server says this email is granted. With several grants the editor picks one and
- * the choice is remembered per project in `localStorage`.
+ * Checks that the signed-in editor is granted the configured Resonance account. The account is
+ * fixed by the Studio owner; this hook only confirms access and picks up the account's label.
+ * An editor whose grants do not include it sees the same "not in Resonance yet" state as one
+ * with no grants at all, instead of a 403 on the first run.
  */
 export function useResonanceAccount({
   fetch,
   accountUid,
   retryKey = 0,
 }: UseResonanceAccountOptions): ResonanceAccountState {
-  const projectId = useProjectId()
-  const key = `${projectId}|${retryKey}|${fetch?.apiUrl ?? ''}`
+  const key = `${accountUid}|${retryKey}|${fetch?.apiUrl ?? ''}`
   const [outcome, setOutcome] = useState<Outcome | null>(null)
 
-  const choose = useCallback(
-    (accounts: ResonanceAccount[], uid: string) => {
-      const account = accounts.find((row) => row.uid === uid)
-      if (!account) return
-      writeStorage(accountStorageKey(projectId), uid)
-      setOutcome({
-        key,
-        state: {status: 'ready', accountUid: account.uid, accountLabel: account.label},
-      })
-    },
-    [key, projectId],
-  )
-
   useEffect(() => {
-    if (accountUid || !fetch) return undefined
+    if (!fetch) return undefined
 
     const controller = new AbortController()
     const settle = (state: ResonanceAccountState) => {
       if (!controller.signal.aborted) setOutcome({key, state})
     }
 
-    const discover = async () => {
+    const verify = async () => {
       let rows: ResonanceAccount[]
       try {
         const response = await fetch.json<AccountsResponse>('/v1/auth/sanity/accounts', {
@@ -109,32 +85,19 @@ export function useResonanceAccount({
         return
       }
 
-      if (rows.length === 0) {
+      const granted = rows.find((row) => row.uid === accountUid)
+      if (!granted) {
         settle({status: 'no-grant'})
         return
       }
 
-      if (rows.length === 1) {
-        const [only] = rows
-        settle({status: 'ready', accountUid: only.uid, accountLabel: only.label})
-        return
-      }
-
-      const remembered = readStorage(accountStorageKey(projectId))
-      const match = isUid(remembered) ? rows.find((row) => row.uid === remembered) : undefined
-      if (match) {
-        settle({status: 'ready', accountUid: match.uid, accountLabel: match.label})
-        return
-      }
-
-      settle({status: 'choose', accounts: rows, choose: (uid) => choose(rows, uid)})
+      settle({status: 'ready', accountUid: granted.uid, accountLabel: granted.label})
     }
-    void discover()
+    void verify()
 
     return () => controller.abort()
-  }, [accountUid, choose, fetch, key, projectId])
+  }, [accountUid, fetch, key])
 
-  if (accountUid) return {status: 'ready', accountUid}
   if (!fetch) return {status: 'loading'}
   if (outcome && outcome.key === key) return outcome.state
   return {status: 'loading'}
