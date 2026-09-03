@@ -32,11 +32,8 @@ export const accessCopy = {
     retry: 'Retry',
   },
   unreachable: {
-    heading: "Resonance hasn't allowed this Studio yet.",
-    body: (origin: string) =>
-      `Requests from ${origin} are being blocked. A Resonance admin needs to add this origin to the allowlist.`,
-    copyOrigin: 'Copy origin',
-    copied: 'Copied',
+    heading: "Couldn't reach Resonance.",
+    body: 'The request never got a response. Resonance may be down, the apiUrl may be wrong, or the network may be blocking it. Try again.',
     retry: 'Retry',
   },
   unauthorized: {

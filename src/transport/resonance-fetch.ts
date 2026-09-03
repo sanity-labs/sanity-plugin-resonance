@@ -1,9 +1,9 @@
 import {validateApiUrl} from '../options'
 
 /**
- * A failed Resonance request. `kind: 'network'` means `fetch` itself rejected (typically a
- * CORS preflight failure or the host being unreachable) and `status` is `null`; `kind: 'http'`
- * means the server answered with a non-2xx status.
+ * A failed Resonance request. `kind: 'network'` means `fetch` itself rejected (the host is
+ * unreachable, DNS failed, the network blocked the request, or the client is offline) and
+ * `status` is `null`; `kind: 'http'` means the server answered with a non-2xx status.
  *
  * @public
  */

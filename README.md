@@ -58,11 +58,10 @@ That is the whole default setup. Editors get:
 - Comparison with the published version whenever they test a draft of something that is live.
 - Every audience on the Resonance account, and Resonance's own neutral prompt.
 
-Before anyone can run a test, two things need to be true on the Resonance side: it has to accept
-requests from your Studio's address, and each editor's email has to have access to a Resonance
-account. Your Resonance contact sets both up; the panel tells editors which one is missing and
-gives them something to send. [docs/auth.md](docs/auth.md) has the details. The Studio itself
-needs `sanity` 5.30 or newer.
+Before anyone can run a test, Resonance must accept Sanity Studio sessions, and each editor's
+email must have access to a Resonance account. Your Resonance contact sets that up; the panel
+tells editors when access is missing and gives them something to send.
+[docs/auth.md](docs/auth.md) has the details. The Studio itself needs `sanity` 5.30 or newer.
 
 ## Make it better
 
@@ -252,14 +251,14 @@ and what needs to be in place on the Resonance side.
 
 If something is not set up yet, the panel shows a short explanation instead of the run card:
 
-| You see                                        | It means                                                           | What to do                                                                 |
-| ---------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Sign in again to use Resonance.                | This Studio session has no token Resonance can use.                | Sign out of the Studio and back in.                                        |
-| Resonance hasn't allowed this Studio yet.      | Resonance does not yet accept requests from this Studio's address. | Copy the origin shown and send it to your Resonance contact.               |
-| Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                    | Sign out and in; if it persists, tell your Resonance contact.              |
-| You're not in Resonance yet.                   | Your email has not been granted a Resonance account.               | **Ask for access** opens your configured link or copies a message to send. |
-| Which Resonance account?                       | You have access to more than one.                                  | Pick one; it is remembered.                                                |
-| This account has no audiences yet.             | Resonance has no audiences defined for this account.               | Define them in Resonance first.                                            |
+| You see                                        | It means                                                                                               | What to do                                                                 |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Sign in again to use Resonance.                | This Studio session has no token Resonance can use.                                                    | Sign out of the Studio and back in.                                        |
+| Couldn't reach Resonance.                      | The request got no response (Resonance is down, the `apiUrl` is wrong, or the network is blocking it). | Retry. If it persists, check `apiUrl`, then your Resonance contact.        |
+| Resonance couldn't verify your Sanity session. | Resonance rejected the session.                                                                        | Sign out and in; if it persists, tell your Resonance contact.              |
+| You're not in Resonance yet.                   | Your email has not been granted a Resonance account.                                                   | **Ask for access** opens your configured link or copies a message to send. |
+| Which Resonance account?                       | You have access to more than one.                                                                      | Pick one; it is remembered.                                                |
+| This account has no audiences yet.             | Resonance has no audiences defined for this account.                                                   | Define them in Resonance first.                                            |
 
 ## Docs
 
