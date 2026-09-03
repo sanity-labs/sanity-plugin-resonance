@@ -1,0 +1,86 @@
+{
+  "name": "@sanity-labs/sanity-plugin-resonance",
+  "version": "0.1.0",
+  "description": "Run Resonance audience tests from a Sanity Studio document inspector.",
+  "keywords": [
+    "sanity",
+    "sanity-plugin"
+  ],
+  "homepage": "https://github.com/sanity-labs/sanity-plugin-resonance#readme",
+  "bugs": {
+    "url": "https://github.com/sanity-labs/sanity-plugin-resonance/issues"
+  },
+  "license": "MIT",
+  "author": "Sanity <hello@sanity.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanity-labs/sanity-plugin-resonance.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": "./dist/index.js",
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "build": "plugin-kit verify-package --silent && pkg-utils build --strict --check --clean",
+    "format": "oxfmt",
+    "link-watch": "plugin-kit link-watch",
+    "lint": "oxlint",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "watch": "pkg-utils watch --strict"
+  },
+  "dependencies": {
+    "@portabletext/markdown": "^1.5.0 || ^2.0.0",
+    "@sanity/icons": "^5.2.1",
+    "@sanity/ui": "^4.0.7"
+  },
+  "devDependencies": {
+    "@sanity/pkg-utils": "^12.3.4",
+    "@sanity/plugin-kit": "^10.0.9",
+    "@types/react": "^19.2.18",
+    "oxfmt": "^0.66.0",
+    "oxlint": "^1.81.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "sanity": "^6.12.0",
+    "styled-components": "^6.5.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  },
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "sanity": "^5.30.0 || ^6.0.0-0",
+    "styled-components": "^6"
+  },
+  "browserslist": [
+    "node >=20.19",
+    "baseline 2024"
+  ],
+  "engines": {
+    "node": ">=20.19 <22 || >=22.12"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "sanityPlugin": {
+    "verifyPackage": {
+      "tsconfig": false
+    }
+  }
+}
