@@ -124,6 +124,9 @@ function isSkipped(field: SerializableField): boolean {
 /** Fields whose name says they carry the block's label. Checked first, in this order. */
 const LABEL_FIELDS = ['title', 'heading', 'name', 'label']
 
+/** Fields that name something; a single lowercase token is still a name here (`initial_context`). */
+const NAME_FIELDS: ReadonlySet<string> = new Set([...LABEL_FIELDS, 'filename', 'alt', 'caption'])
+
 /** Fields that hold machine data (links, ids, presentation) rather than words for a reader. */
 const TECHNICAL_FIELDS: ReadonlySet<string> = new Set([
   'asset',
@@ -157,6 +160,9 @@ const TECHNICAL_FIELDS: ReadonlySet<string> = new Set([
 
 const LOOKS_LIKE_URL_OR_ID = /^(https?:\/\/|\/|[A-Za-z0-9_-]{20,}$)/
 
+/** `auto`, `16:9`, `dark`, `left`: a single lowercase token is a setting, not a sentence. */
+const LOOKS_LIKE_ENUM = /^[a-z0-9][a-z0-9:_./-]{0,15}$/
+
 /** Nested objects deeper than this are named, not read. */
 const MAX_DESCRIBE_DEPTH = 3
 
@@ -167,17 +173,20 @@ function collapse(text: string): string {
 function isReadable(key: string, value: string): boolean {
   if (key.startsWith('_') || TECHNICAL_FIELDS.has(key)) return false
   const text = value.trim()
-  return text !== '' && !LOOKS_LIKE_URL_OR_ID.test(text)
+  if (text === '' || LOOKS_LIKE_URL_OR_ID.test(text)) return false
+  return NAME_FIELDS.has(key) || !LOOKS_LIKE_ENUM.test(text)
 }
 
 function isPortableTextValue(value: unknown): value is unknown[] {
   return Array.isArray(value) && value.some((item) => isRecord(item) && item._type === 'block')
 }
 
+/** A fence one backtick longer than any run inside the code, so the sample cannot close it early. */
 function fence(value: Record<string, unknown>): string | null {
   if (typeof value.code !== 'string' || value.code.trim() === '') return null
   const language = typeof value.language === 'string' ? value.language.trim() : ''
-  const marker = value.code.includes('```') ? '````' : '```'
+  const longestRun = Math.max(0, ...(value.code.match(/`+/g) ?? []).map((run) => run.length))
+  const marker = '`'.repeat(Math.max(3, longestRun + 1))
   return `${marker}${language}\n${value.code}\n${marker}`
 }
 
@@ -234,7 +243,9 @@ function describe(value: Record<string, unknown>, depth: number): Description {
 
   if (value._type === 'image' || 'asset' in value) {
     const alt = firstString(value.alt, value.caption, value.title)
-    out.inline.push(alt ? `[image: ${collapse(alt)}]` : '[image]')
+    // A poster or thumbnail inside another block says nothing without alt text.
+    if (alt) out.inline.push(`[image: ${collapse(alt)}]`)
+    else if (depth === 0) out.inline.push('[image]')
     return out
   }
 
@@ -281,22 +292,30 @@ function describe(value: Record<string, unknown>, depth: number): Description {
         if (typeof item === 'string') {
           if (isReadable(key, item)) out.inline.push(collapse(item))
         } else if (isRecord(item)) {
-          const nested = describe(item, depth + 1)
-          out.inline.push(...nested.inline)
-          out.blocks.push(...nested.blocks)
+          merge(out, describe(item, depth + 1))
         }
       }
       continue
     }
 
-    if (isRecord(field)) {
-      const nested = describe(field, depth + 1)
-      out.inline.push(...nested.inline)
-      out.blocks.push(...nested.blocks)
-    }
+    if (isRecord(field)) merge(out, describe(field, depth + 1))
   }
 
   return out
+}
+
+/**
+ * Folds a nested description into its parent. Words stay inline; when the child also carries
+ * code or a table, its words become a caption line above them so a tab's filename stays with
+ * its fence instead of drifting onto the parent's line.
+ */
+function merge(out: Description, nested: Description): void {
+  if (nested.blocks.length === 0) {
+    out.inline.push(...nested.inline)
+    return
+  }
+  if (nested.inline.length > 0) out.blocks.push(`[${nested.inline.join(' — ')}]`)
+  out.blocks.push(...nested.blocks)
 }
 
 /**
@@ -398,7 +417,10 @@ function walkFields(
       if (!isPortableText(type, fieldValue)) continue
       const rendered = renderPortableText(fieldValue)
       if (rendered === '') continue
-      const italic = STANDFIRST_FIELDS.has(field.name) && isSingleParagraph(fieldValue)
+      const italic =
+        STANDFIRST_FIELDS.has(field.name) &&
+        isSingleParagraph(fieldValue) &&
+        !/^[_*].*[_*]$/s.test(rendered)
       out.parts.push(italic ? `_${rendered}_` : rendered)
       continue
     }
