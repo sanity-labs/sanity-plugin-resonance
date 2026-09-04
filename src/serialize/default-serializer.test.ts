@@ -240,6 +240,55 @@ describe('serializeWithSchema', () => {
     expect(result?.content).not.toMatch(/https?:|\/a\b|caution|star|second-card|zXvt0/)
   })
 
+  it('ignores settings-like tokens and nested images without alt, and keeps an emphasised standfirst single', () => {
+    const type = schema([portableText('description'), portableText('body')])
+    const result = serializeWithSchema(
+      {
+        description: [
+          block('', {
+            children: [{_type: 'span', _key: 's', text: 'Already italic', marks: ['em']}],
+          }),
+        ],
+        body: [
+          {
+            _type: 'sanityVideo',
+            _key: 'v',
+            aspectRatio: 'auto',
+            video: {asset: {_ref: 'file-abc'}},
+            poster: {_type: 'image', asset: {_ref: 'image-def'}},
+          },
+          {_type: 'divider', _key: 'd', style: 'dark'},
+          {_type: 'hero', _key: 'h', heading: 'Ship faster', theme: 'dark', cta: 'Start'},
+        ],
+      },
+      type,
+    )
+    expect(result?.content).toBe(
+      ['_Already italic_', '[sanityVideo]', '[divider]', '[hero: Ship faster — Start]'].join(
+        '\n\n',
+      ),
+    )
+  })
+
+  it('fences code with more backticks than any run inside it', () => {
+    const type = schema([portableText('body')])
+    const result = serializeWithSchema(
+      {
+        body: [
+          {_type: 'code', _key: 'a', code: 'plain'},
+          {_type: 'code', _key: 'b', code: 'has ``` inside'},
+          {_type: 'code', _key: 'c', language: 'md', code: '````\nnested\n````'},
+        ],
+      },
+      type,
+    )
+    expect(result?.content).toBe(
+      ['```\nplain\n```', '````\nhas ``` inside\n````', '`````md\n````\nnested\n````\n`````'].join(
+        '\n\n',
+      ),
+    )
+  })
+
   it('renders code inside blocks as fences and rows of cells as tables', () => {
     const type = schema([portableText('body')])
     const result = serializeWithSchema(
@@ -268,7 +317,8 @@ describe('serializeWithSchema', () => {
     )
     expect(result?.content).toBe(
       [
-        '[codeBlock: a.ts]',
+        '[codeBlock]',
+        '[a.ts]',
         '```ts\nconst a = 1\n```',
         '```\nb = 2\n```',
         '[docsTable]',
